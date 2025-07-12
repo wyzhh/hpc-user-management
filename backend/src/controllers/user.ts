@@ -365,12 +365,12 @@ export class UserController {
   // 获取用户统计
   static async getUserStats(req: Request, res: Response) {
     try {
-      // 获取PI统计
-      const allPIs = await PIModel.getAll(1, 1000);
-      const activePIs = await PIModel.getAll(1, 1000, true);
+      // 获取PI统计 - 修复：第一个参数应该是false获取所有用户
+      const allPIs = await PIModel.getAll(1, 1000, false); // 获取所有PI（包括不活跃）
+      const activePIs = await PIModel.getAll(1, 1000, true); // 获取活跃PI
 
-      // 获取学生统计
-      const allStudents = await StudentModel.findByPiId(0, 1, 1000); // 获取所有学生
+      // 获取学生统计 - 修复：使用StudentModel.getAll获取所有学生
+      const allStudents = await StudentModel.getAll(1, 1000); // 获取所有学生
       const activeStudents = allStudents.students.filter(s => s.status === 'active');
 
       // 管理员统计（简化处理）
