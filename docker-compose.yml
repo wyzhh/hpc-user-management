@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 数据库
+  db:
+    image: postgres:15-alpine
+    container_name: hpc-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hpc_management}
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+    networks:
+      - hpc-network
+    restart: unless-stopped
+    command: ["postgres", "-c", "listen_addresses=*", "-c", "log_statement=all"]
+
+  # OpenLDAP 服务
+  ldap:
+    image: osixia/openldap:1.5.0
+    container_name: hpc-ldap
+    environment:
+      LDAP_ORGANISATION: ${LDAP_ORGANISATION:-HPC University}
+      LDAP_DOMAIN: ${LDAP_DOMAIN:-hpc.university.edu}
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-admin_password}
+      LDAP_CONFIG_PASSWORD: ${LDAP_ADMIN_PASSWORD:-admin_password}
+      LDAP_READONLY_USER: false
+      LDAP_RFC2307BIS_SCHEMA: false
+      LDAP_BACKEND: mdb
+      LDAP_TLS: false
+      LDAP_REPLICATION: false
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: false
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+      - ./database/ldap-init.ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom/init.ldif
+    ports:
+      - "389:389"
+    networks:
+      - hpc-network
+    restart: unless-stopped
+
+  # LDAP 管理界面 (可选)
+  ldap-admin:
+    image: osixia/phpldapadmin:latest
+    container_name: hpc-ldap-admin
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: ldap
+      PHPLDAPADMIN_HTTPS: false
+    ports:
+      - "8080:80"
+    networks:
+      - hpc-network
+    depends_on:
+      - ldap
+    restart: unless-stopped
+
+  # 后端API服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hpc-backend
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-hpc_management}
+      LDAP_URL: ldap://ldap:389
+      LDAP_BIND_DN: cn=admin,dc=hpc,dc=university,dc=edu
+      LDAP_BIND_PASSWORD: ${LDAP_ADMIN_PASSWORD:-admin_password}
+      LDAP_BASE_DN: dc=hpc,dc=university,dc=edu
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 8000
+    ports:
+      - "8000:8000"
+    networks:
+      - hpc-network
+    depends_on:
+      - db
+      - ldap
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # 前端Web应用
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:8000/api}
+    container_name: hpc-frontend
+    ports:
+      - "3000:80"
+    networks:
+      - hpc-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+networks:
+  hpc-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  ldap_data:
+    driver: local
+  ldap_config:
+    driver: local

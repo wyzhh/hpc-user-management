@@ -1,0 +1,106 @@
+# LDAP初始化文件 - 创建组织单位和示例用户
+
+# 创建PIs组织单位
+dn: ou=pis,dc=hpc,dc=university,dc=edu
+objectClass: organizationalUnit
+ou: pis
+description: Principal Investigators
+
+# 创建学生组织单位  
+dn: ou=students,dc=hpc,dc=university,dc=edu
+objectClass: organizationalUnit
+ou: students
+description: Student Users
+
+# 创建组织单位用于组
+dn: ou=groups,dc=hpc,dc=university,dc=edu
+objectClass: organizationalUnit
+ou: groups
+description: User Groups
+
+# 创建PI组
+dn: cn=pis,ou=groups,dc=hpc,dc=university,dc=edu
+objectClass: groupOfNames
+cn: pis
+description: Principal Investigators Group
+member: uid=pi001,ou=pis,dc=hpc,dc=university,dc=edu
+member: uid=pi002,ou=pis,dc=hpc,dc=university,dc=edu
+member: uid=pi003,ou=pis,dc=hpc,dc=university,dc=edu
+
+# 创建学生组
+dn: cn=students,ou=groups,dc=hpc,dc=university,dc=edu
+objectClass: groupOfNames
+cn: students
+description: Students Group
+member: uid=student001,ou=students,dc=hpc,dc=university,dc=edu
+
+# 示例PI用户1
+dn: uid=pi001,ou=pis,dc=hpc,dc=university,dc=edu
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: pi001
+cn: Zhang Professor
+sn: Zhang
+givenName: Professor
+displayName: 张教授
+mail: zhang@hpc.university.edu
+telephoneNumber: 010-12345678
+ou: 计算机科学与技术学院
+uidNumber: 10001
+gidNumber: 1001
+homeDirectory: /home/pi001
+loginShell: /bin/bash
+userPassword: {SSHA}8jOGhtr0fBWVqo4y5bmy7kLLZWHkAZ3X
+
+# 示例PI用户2
+dn: uid=pi002,ou=pis,dc=hpc,dc=university,dc=edu
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: pi002
+cn: Li Professor
+sn: Li
+givenName: Professor
+displayName: 李教授
+mail: li@hpc.university.edu
+telephoneNumber: 010-87654321
+ou: 数学科学学院
+uidNumber: 10002
+gidNumber: 1001
+homeDirectory: /home/pi002
+loginShell: /bin/bash
+userPassword: {SSHA}8jOGhtr0fBWVqo4y5bmy7kLLZWHkAZ3X
+
+# 示例PI用户3
+dn: uid=pi003,ou=pis,dc=hpc,dc=university,dc=edu
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: pi003
+cn: Wang Professor
+sn: Wang
+givenName: Professor
+displayName: 王教授
+mail: wang@hpc.university.edu
+telephoneNumber: 010-99887766
+ou: 物理学院
+uidNumber: 10003
+gidNumber: 1001
+homeDirectory: /home/pi003
+loginShell: /bin/bash
+userPassword: {SSHA}8jOGhtr0fBWVqo4y5bmy7kLLZWHkAZ3X
+
+# 示例学生用户（用于测试）
+dn: uid=student001,ou=students,dc=hpc,dc=university,dc=edu
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: student001
+cn: Student One
+sn: One
+givenName: Student
+displayName: 测试学生一
+mail: student001@hpc.university.edu
+telephoneNumber: 010-11111111
+uidNumber: 20001
+gidNumber: 1000
+homeDirectory: /home/student001
+loginShell: /bin/bash
+userPassword: {SSHA}8jOGhtr0fBWVqo4y5bmy7kLLZWHkAZ3X
