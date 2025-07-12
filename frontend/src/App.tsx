@@ -7,6 +7,9 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import StudentManagement from './pages/StudentManagement';
+import RequestManagement from './pages/RequestManagement';
+import UserManagement from './pages/UserManagement';
 import './App.css';
 
 // 错误页面组件
@@ -54,7 +57,7 @@ const App: React.FC = () => {
                   path="students/*"
                   element={
                     <ProtectedRoute requiredRoles={['pi']}>
-                      <div>学生管理页面（待实现）</div>
+                      <StudentManagement />
                     </ProtectedRoute>
                   }
                 />
@@ -62,7 +65,7 @@ const App: React.FC = () => {
                   path="requests/*"
                   element={
                     <ProtectedRoute requiredRoles={['pi']}>
-                      <div>申请记录页面（待实现）</div>
+                      <RequestManagement />
                     </ProtectedRoute>
                   }
                 />
@@ -72,7 +75,7 @@ const App: React.FC = () => {
                   path="admin/requests/*"
                   element={
                     <ProtectedRoute requiredRoles={['admin']}>
-                      <div>申请审核页面（待实现）</div>
+                      <RequestManagement />
                     </ProtectedRoute>
                   }
                 />
@@ -80,7 +83,7 @@ const App: React.FC = () => {
                   path="admin/users/*"
                   element={
                     <ProtectedRoute requiredRoles={['admin']}>
-                      <div>用户管理页面（待实现）</div>
+                      <UserManagement />
                     </ProtectedRoute>
                   }
                 />

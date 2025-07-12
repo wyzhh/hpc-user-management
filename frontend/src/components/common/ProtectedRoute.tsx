@@ -38,10 +38,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // 检查角色权限
   if (requiredRoles && requiredRoles.length > 0) {
-    if (!user || !requiredRoles.includes(user.role)) {
-      // 权限不足，重定向到无权限页面或首页
+    if (!user) {
+      console.log('权限检查失败：用户信息为空');
       return <Navigate to="/unauthorized" replace />;
     }
+    
+    if (!requiredRoles.includes(user.role)) {
+      console.log(`权限检查失败：用户角色 "${user.role}" 不在要求的角色 [${requiredRoles.join(', ')}] 中`);
+      return <Navigate to="/unauthorized" replace />;
+    }
+    
+    console.log(`权限检查通过：用户角色 "${user.role}" 符合要求 [${requiredRoles.join(', ')}]`);
   }
 
   return <>{children}</>;

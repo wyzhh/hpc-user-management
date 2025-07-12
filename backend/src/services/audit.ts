@@ -177,3 +177,6 @@ export class AuditService {
     }
   }
 }
+
+// 创建单例实例
+export const auditService = new AuditService();

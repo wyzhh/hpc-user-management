@@ -43,6 +43,8 @@ export interface Admin {
   full_name: string;
   email: string;
   role: 'admin' | 'super_admin';
+  password_hash?: string;
+  ldap_dn?: string;
   is_active: boolean;
   created_at: Date;
 }

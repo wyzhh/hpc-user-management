@@ -3,30 +3,24 @@ import config from '../config';
 import { PIInfo, Student, CreateStudentRequest } from '../types';
 
 export class LDAPService {
-  private client: ldap.Client;
-
-  constructor() {
-    this.client = ldap.createClient({
+  private createClient(): ldap.Client {
+    return ldap.createClient({
       url: config.ldap.url,
       timeout: 30000,
       connectTimeout: 30000,
       idleTimeout: 60000,
     });
-
-    this.client.on('error', (err) => {
-      console.error('LDAP连接错误:', err);
-    });
   }
 
-  private async bind(): Promise<void> {
+  private async bindClient(client: ldap.Client): Promise<void> {
     return new Promise((resolve, reject) => {
       console.log('开始管理员绑定LDAP...');
       const timer = setTimeout(() => {
         console.log('管理员绑定LDAP超时');
         reject(new Error('Admin LDAP bind timeout'));
-      }, 10000);
+      }, 30000);
       
-      this.client.bind(config.ldap.bindDN, config.ldap.bindCredentials, (err) => {
+      client.bind(config.ldap.bindDN, config.ldap.bindCredentials, (err) => {
         clearTimeout(timer);
         if (err) {
           console.error('LDAP管理员绑定失败:', err);
@@ -39,9 +33,9 @@ export class LDAPService {
     });
   }
 
-  private async unbind(): Promise<void> {
+  private async unbindClient(client: ldap.Client): Promise<void> {
     return new Promise((resolve) => {
-      this.client.unbind((err) => {
+      client.unbind((err) => {
         if (err) {
           console.error('LDAP解绑失败:', err);
         }
@@ -139,104 +133,31 @@ export class LDAPService {
     }
   }
 
-  private async searchPI(username: string): Promise<PIInfo | null> {
-    return new Promise((resolve, reject) => {
-      const searchBase = `${config.ldap.piOU},${config.ldap.baseDN}`;
-      const searchFilter = `(uid=${username})`;
-      
-      console.log(`开始搜索PI用户: ${username}`);
-      console.log(`搜索基础DN: ${searchBase}`);
-      console.log(`搜索过滤器: ${searchFilter}`);
-      
-      const searchOptions = {
-        scope: 'sub' as const,
-        filter: searchFilter,
-        attributes: ['uid', 'cn', 'sn', 'givenName', 'mail', 'telephoneNumber', 'ou', 'displayName'],
-      };
-
-      const timer = setTimeout(() => {
-        console.log(`搜索PI用户超时: ${username}`);
-        reject(new Error('Search PI timeout'));
-      }, 10000);
-
-      this.client.search(searchBase, searchOptions, (err, res) => {
-        if (err) {
-          clearTimeout(timer);
-          console.log(`搜索PI用户失败: ${err.message}`);
-          reject(err);
-          return;
-        }
-
-        console.log(`开始处理搜索结果...`);
-        let piInfo: PIInfo | null = null;
-
-        res.on('searchEntry', (entry) => {
-          console.log(`找到PI用户条目: ${entry.objectName}`);
-          const attrs = entry.attributes;
-          const getAttr = (name: string) => {
-            const attr = attrs.find(a => a.type === name);
-            return attr ? attr.values[0] : '';
-          };
-
-          piInfo = {
-            id: 0, // 将在数据库中设置
-            ldap_dn: entry.objectName || '',
-            username: getAttr('uid'),
-            full_name: getAttr('displayName') || getAttr('cn'),
-            email: getAttr('mail'),
-            department: getAttr('ou'),
-            phone: getAttr('telephoneNumber'),
-            is_active: true,
-            created_at: new Date(),
-            updated_at: new Date(),
-          };
-          console.log(`PI用户信息解析完成: ${piInfo.username}`);
-        });
-
-        res.on('searchReference', (referral) => {
-          console.log('LDAP搜索引用:', referral.uris);
-        });
-
-        res.on('error', (err) => {
-          console.error('LDAP搜索错误:', err);
-          reject(err);
-        });
-
-        res.on('end', (result) => {
-          clearTimeout(timer);
-          console.log(`LDAP搜索完成，状态码: ${result?.status}`);
-          if (result?.status === 0) {
-            console.log(`返回PI用户信息: ${piInfo?.username || 'null'}`);
-            resolve(piInfo);
-          } else {
-            console.log(`LDAP搜索失败，状态码: ${result?.status}`);
-            reject(new Error(`LDAP搜索失败，状态码: ${result?.status}`));
-          }
-        });
-      });
-    });
-  }
 
   async createStudentAccount(studentData: CreateStudentRequest, piId: number): Promise<string> {
     const studentDN = `uid=${studentData.username},${config.ldap.studentOU},${config.ldap.baseDN}`;
+    const client = this.createClient();
     
     try {
-      await this.bind();
+      console.log(`开始创建学生账号: ${studentData.username}`);
+      
+      // 绑定管理员
+      await this.bindClient(client);
 
       // 获取下一个可用的UID号
-      const uidNumber = await this.getNextUidNumber();
+      const uidNumber = await this.getNextUidNumberWithClient(client);
       
       const entry = {
         objectClass: ['inetOrgPerson', 'posixAccount'],
         uid: studentData.username,
         cn: studentData.chinese_name,
-        sn: studentData.chinese_name.split('').pop() || studentData.chinese_name, // 取最后一个字符作为姓
-        givenName: studentData.chinese_name.split('').slice(0, -1).join('') || studentData.chinese_name, // 剩余字符作为名
+        sn: studentData.chinese_name.split('').pop() || studentData.chinese_name,
+        givenName: studentData.chinese_name.split('').slice(0, -1).join('') || studentData.chinese_name,
         displayName: studentData.chinese_name,
         mail: studentData.email,
         telephoneNumber: studentData.phone || '',
         uidNumber: uidNumber.toString(),
-        gidNumber: '1000', // 学生组
+        gidNumber: '1000',
         homeDirectory: `/home/${studentData.username}`,
         loginShell: '/bin/bash',
         userPassword: this.generateRandomPassword(),
@@ -244,7 +165,13 @@ export class LDAPService {
       };
 
       await new Promise<void>((resolve, reject) => {
-        this.client.add(studentDN, entry, (err) => {
+        console.log(`正在添加LDAP用户: ${studentDN}`);
+        const timer = setTimeout(() => {
+          reject(new Error('LDAP add user timeout'));
+        }, 15000);
+        
+        client.add(studentDN, entry, (err) => {
+          clearTimeout(timer);
           if (err) {
             console.error('LDAP添加用户失败:', err);
             reject(err);
@@ -255,22 +182,34 @@ export class LDAPService {
         });
       });
 
-      await this.unbind();
       return studentDN;
     } catch (error) {
       console.error('创建学生账号失败:', error);
       throw error;
+    } finally {
+      // 确保客户端被关闭
+      try {
+        client.unbind();
+      } catch (e) {
+        console.error('关闭LDAP客户端失败:', e);
+      }
     }
   }
 
   async deleteStudentAccount(username: string): Promise<boolean> {
     const studentDN = `uid=${username},${config.ldap.studentOU},${config.ldap.baseDN}`;
+    const client = this.createClient();
     
     try {
-      await this.bind();
+      await this.bindClient(client);
 
       await new Promise<void>((resolve, reject) => {
-        this.client.del(studentDN, (err) => {
+        const timer = setTimeout(() => {
+          reject(new Error('LDAP delete user timeout'));
+        }, 15000);
+        
+        client.del(studentDN, (err) => {
+          clearTimeout(timer);
           if (err) {
             console.error('LDAP删除用户失败:', err);
             reject(err);
@@ -281,17 +220,24 @@ export class LDAPService {
         });
       });
 
-      await this.unbind();
       return true;
     } catch (error) {
       console.error('删除学生账号失败:', error);
       return false;
+    } finally {
+      try {
+        client.unbind();
+      } catch (e) {
+        console.error('关闭LDAP客户端失败:', e);
+      }
     }
   }
 
   async checkUserExists(username: string, isPI: boolean = false): Promise<boolean> {
+    const client = this.createClient();
+    
     try {
-      await this.bind();
+      await this.bindClient(client);
       
       const searchBase = isPI 
         ? `${config.ldap.piOU},${config.ldap.baseDN}`
@@ -304,8 +250,13 @@ export class LDAPService {
           attributes: ['uid'],
         };
 
-        this.client.search(searchBase, searchOptions, (err, res) => {
+        const timer = setTimeout(() => {
+          reject(new Error('LDAP search timeout'));
+        }, 15000);
+
+        client.search(searchBase, searchOptions, (err, res) => {
           if (err) {
+            clearTimeout(timer);
             reject(err);
             return;
           }
@@ -317,10 +268,12 @@ export class LDAPService {
           });
 
           res.on('error', (err) => {
+            clearTimeout(timer);
             reject(err);
           });
 
           res.on('end', (result) => {
+            clearTimeout(timer);
             if (result?.status === 0) {
               resolve(found);
             } else {
@@ -330,15 +283,226 @@ export class LDAPService {
         });
       });
 
-      await this.unbind();
       return exists;
     } catch (error) {
       console.error('检查用户存在性失败:', error);
       return false;
+    } finally {
+      try {
+        client.unbind();
+      } catch (e) {
+        console.error('关闭LDAP客户端失败:', e);
+      }
     }
   }
 
-  private async getNextUidNumber(): Promise<number> {
+  // 获取所有PI用户
+  async getAllPIUsers(): Promise<PIInfo[]> {
+    const client = this.createClient();
+    
+    try {
+      await this.bindClient(client);
+      
+      const searchBase = `${config.ldap.piOU},${config.ldap.baseDN}`;
+      
+      const piUsers = await new Promise<PIInfo[]>((resolve, reject) => {
+        const searchOptions = {
+          scope: 'sub' as const,
+          filter: '(objectClass=person)',
+          attributes: [
+            config.ldap.attributes.pi.username,
+            config.ldap.attributes.pi.name,
+            config.ldap.attributes.pi.email,
+            config.ldap.attributes.pi.phone,
+            config.ldap.attributes.pi.department,
+            config.ldap.attributes.pi.cn,
+            'dn'
+          ],
+        };
+
+        const timer = setTimeout(() => {
+          reject(new Error('LDAP search timeout'));
+        }, 30000);
+
+        const users: PIInfo[] = [];
+
+        client.search(searchBase, searchOptions, (err, res) => {
+          if (err) {
+            clearTimeout(timer);
+            reject(err);
+            return;
+          }
+
+          res.on('searchEntry', (entry) => {
+            try {
+              const attrs = entry.attributes;
+              const getAttrValue = (name: string) => {
+                const attr = attrs.find(a => a.type === name);
+                return attr && attr.values.length > 0 ? attr.values[0] : '';
+              };
+
+              const piUser: PIInfo = {
+                id: 0, // 临时ID，数据库中会自动分配
+                ldap_dn: entry.dn,
+                username: getAttrValue(config.ldap.attributes.pi.username),
+                full_name: getAttrValue(config.ldap.attributes.pi.name),
+                email: getAttrValue(config.ldap.attributes.pi.email),
+                department: getAttrValue(config.ldap.attributes.pi.department) || undefined,
+                phone: getAttrValue(config.ldap.attributes.pi.phone) || undefined,
+                is_active: true,
+                created_at: new Date(),
+                updated_at: new Date(),
+              };
+
+              if (piUser.username) {
+                users.push(piUser);
+              }
+            } catch (error) {
+              console.error('解析PI用户条目失败:', error);
+            }
+          });
+
+          res.on('error', (err) => {
+            clearTimeout(timer);
+            reject(err);
+          });
+
+          res.on('end', (result) => {
+            clearTimeout(timer);
+            if (result?.status === 0) {
+              console.log(`从LDAP获取到 ${users.length} 个PI用户`);
+              resolve(users);
+            } else {
+              reject(new Error(`LDAP搜索失败，状态码: ${result?.status}`));
+            }
+          });
+        });
+      });
+
+      return piUsers;
+    } catch (error) {
+      console.error('获取所有PI用户失败:', error);
+      throw error;
+    } finally {
+      try {
+        await this.unbindClient(client);
+      } catch (e) {
+        console.error('关闭LDAP客户端失败:', e);
+      }
+    }
+  }
+
+  // 获取所有学生用户
+  async getAllStudentUsers(): Promise<Student[]> {
+    const client = this.createClient();
+    
+    try {
+      await this.bindClient(client);
+      
+      const searchBase = `${config.ldap.studentOU},${config.ldap.baseDN}`;
+      
+      const studentUsers = await new Promise<Student[]>((resolve, reject) => {
+        const searchOptions = {
+          scope: 'sub' as const,
+          filter: '(objectClass=person)',
+          attributes: [
+            config.ldap.attributes.student.username,
+            config.ldap.attributes.student.name,
+            config.ldap.attributes.student.email,
+            config.ldap.attributes.student.phone,
+            'dn'
+          ],
+        };
+
+        const timer = setTimeout(() => {
+          reject(new Error('LDAP search timeout'));
+        }, 30000);
+
+        const users: Student[] = [];
+
+        client.search(searchBase, searchOptions, (err, res) => {
+          if (err) {
+            clearTimeout(timer);
+            reject(err);
+            return;
+          }
+
+          res.on('searchEntry', (entry) => {
+            try {
+              const attrs = entry.attributes;
+              const getAttrValue = (name: string) => {
+                const attr = attrs.find(a => a.type === name);
+                return attr && attr.values.length > 0 ? attr.values[0] : '';
+              };
+
+              const studentUser: Student = {
+                id: 0, // 临时ID，数据库中会自动分配
+                username: getAttrValue(config.ldap.attributes.student.username),
+                chinese_name: getAttrValue(config.ldap.attributes.student.name),
+                email: getAttrValue(config.ldap.attributes.student.email),
+                phone: getAttrValue(config.ldap.attributes.student.phone) || undefined,
+                pi_id: 0, // 需要后续匹配
+                ldap_dn: entry.dn,
+                status: 'active' as const,
+                created_at: new Date(),
+                updated_at: new Date(),
+              };
+
+              if (studentUser.username) {
+                users.push(studentUser);
+              }
+            } catch (error) {
+              console.error('解析学生用户条目失败:', error);
+            }
+          });
+
+          res.on('error', (err) => {
+            clearTimeout(timer);
+            reject(err);
+          });
+
+          res.on('end', (result) => {
+            clearTimeout(timer);
+            if (result?.status === 0) {
+              console.log(`从LDAP获取到 ${users.length} 个学生用户`);
+              resolve(users);
+            } else {
+              reject(new Error(`LDAP搜索失败，状态码: ${result?.status}`));
+            }
+          });
+        });
+      });
+
+      return studentUsers;
+    } catch (error) {
+      console.error('获取所有学生用户失败:', error);
+      throw error;
+    } finally {
+      try {
+        await this.unbindClient(client);
+      } catch (e) {
+        console.error('关闭LDAP客户端失败:', e);
+      }
+    }
+  }
+
+  // 根据学生的DN信息推断其PI
+  async getStudentPIMapping(studentDN: string): Promise<string | null> {
+    // 这里可以实现根据LDAP组织结构或属性来确定学生的PI
+    // 示例实现：从DN中提取PI信息，或通过LDAP组查询
+    try {
+      // 简化实现：如果学生DN包含PI信息，可以从中提取
+      // 实际实现需要根据你的LDAP结构来调整
+      const match = studentDN.match(/ou=([^,]+)/i);
+      return match ? match[1] : null;
+    } catch (error) {
+      console.error('获取学生PI映射失败:', error);
+      return null;
+    }
+  }
+
+
+  private async getNextUidNumberWithClient(client: ldap.Client): Promise<number> {
     try {
       const searchOptions = {
         scope: 'sub' as const,
@@ -348,9 +512,14 @@ export class LDAPService {
 
       const maxUid = await new Promise<number>((resolve, reject) => {
         let maxUidNumber = 20000; // 学生UID从20000开始
+        
+        const timer = setTimeout(() => {
+          reject(new Error('Get UID number timeout'));
+        }, 10000);
 
-        this.client.search(config.ldap.baseDN, searchOptions, (err, res) => {
+        client.search(config.ldap.baseDN, searchOptions, (err, res) => {
           if (err) {
+            clearTimeout(timer);
             reject(err);
             return;
           }
@@ -366,10 +535,12 @@ export class LDAPService {
           });
 
           res.on('error', (err) => {
+            clearTimeout(timer);
             reject(err);
           });
 
           res.on('end', (result) => {
+            clearTimeout(timer);
             if (result?.status === 0) {
               resolve(maxUidNumber);
             } else {
@@ -462,19 +633,21 @@ export class LDAPService {
   }
 
   async testConnection(): Promise<boolean> {
+    const client = this.createClient();
     try {
-      await this.bind();
+      await this.bindClient(client);
       console.log('✅ LDAP连接测试成功');
-      await this.unbind();
       return true;
     } catch (error) {
       console.error('❌ LDAP连接测试失败:', error);
       return false;
+    } finally {
+      try {
+        client.unbind();
+      } catch (e) {
+        console.error('关闭LDAP客户端失败:', e);
+      }
     }
-  }
-
-  destroy(): void {
-    this.client.destroy();
   }
 }
 

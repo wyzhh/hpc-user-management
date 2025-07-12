@@ -237,6 +237,7 @@ export class AuthService {
         email: ldapUserInfo.email,
         ldap_dn: ldapUserInfo.ldap_dn,
         role: 'admin',
+        is_active: true,
       });
 
       console.log(`从LDAP创建管理员: ${ldapUserInfo.username}`);

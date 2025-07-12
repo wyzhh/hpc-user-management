@@ -73,6 +73,7 @@ export const requireRole = (allowedRoles: ('pi' | 'admin')[]) => {
   };
 };
 
+export const requireAuth = authenticateToken;
 export const requirePI = requireRole(['pi']);
 export const requireAdmin = requireRole(['admin']);
 export const requireAnyRole = requireRole(['pi', 'admin']);

@@ -57,6 +57,49 @@ export class PIModel {
     
     return { pis: result.rows, total };
   }
+
+  static async findByLdapDnBatch(ldapDns: string[]): Promise<PIInfo[]> {
+    if (ldapDns.length === 0) return [];
+    
+    const placeholders = ldapDns.map((_, index) => `$${index + 1}`).join(', ');
+    const query = `SELECT * FROM pis WHERE ldap_dn IN (${placeholders})`;
+    const result = await pool.query(query, ldapDns);
+    return result.rows;
+  }
+
+  static async upsert(data: Omit<PIInfo, 'id' | 'created_at' | 'updated_at'>): Promise<PIInfo> {
+    const query = `
+      INSERT INTO pis (ldap_dn, username, full_name, email, department, phone, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (username) DO UPDATE SET
+        ldap_dn = EXCLUDED.ldap_dn,
+        full_name = EXCLUDED.full_name,
+        email = EXCLUDED.email,
+        department = EXCLUDED.department,
+        phone = EXCLUDED.phone,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `;
+    const values = [data.ldap_dn, data.username, data.full_name, data.email, data.department, data.phone, data.is_active];
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
+
+  static async markInactiveByLdapDns(excludeLdapDns: string[]): Promise<number> {
+    if (excludeLdapDns.length === 0) {
+      // 如果没有排除的DN，标记所有用户为不活跃
+      const result = await pool.query('UPDATE pis SET is_active = false WHERE is_active = true');
+      return result.rowCount;
+    }
+    
+    const placeholders = excludeLdapDns.map((_, index) => `$${index + 1}`).join(', ');
+    const query = `
+      UPDATE pis SET is_active = false 
+      WHERE ldap_dn NOT IN (${placeholders}) AND is_active = true
+    `;
+    const result = await pool.query(query, excludeLdapDns);
+    return result.rowCount;
+  }
 }
 
 export class StudentModel {
@@ -97,6 +140,44 @@ export class StudentModel {
     return { students: result.rows, total };
   }
 
+  static async getAll(page = 1, limit = 10, status?: string, search?: string): Promise<{ students: Student[], total: number }> {
+    const offset = (page - 1) * limit;
+    let whereClause = '';
+    let params: any[] = [];
+
+    const conditions = [];
+    if (status) {
+      conditions.push(`status = $${params.length + 1}`);
+      params.push(status);
+    }
+    
+    if (search) {
+      conditions.push(`(username ILIKE $${params.length + 1} OR chinese_name ILIKE $${params.length + 1} OR email ILIKE $${params.length + 1})`);
+      params.push(`%${search}%`);
+    }
+
+    if (conditions.length > 0) {
+      whereClause = `WHERE ${conditions.join(' AND ')}`;
+    }
+
+    const countQuery = `SELECT COUNT(*) FROM students ${whereClause}`;
+    const countResult = await pool.query(countQuery, params);
+    const total = parseInt(countResult.rows[0].count, 10);
+
+    const query = `
+      SELECT s.*, p.username as pi_username, p.full_name as pi_name
+      FROM students s
+      LEFT JOIN pis p ON s.pi_id = p.id
+      ${whereClause}
+      ORDER BY s.created_at DESC
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+    `;
+    params.push(limit, offset);
+    const result = await pool.query(query, params);
+    
+    return { students: result.rows, total };
+  }
+
   static async create(data: Omit<Student, 'id' | 'created_at' | 'updated_at'>): Promise<Student> {
     const query = `
       INSERT INTO students (username, chinese_name, email, phone, pi_id, ldap_dn, status)
@@ -127,6 +208,55 @@ export class StudentModel {
     const query = 'SELECT pi_id FROM students WHERE id = $1';
     const result = await pool.query(query, [studentId]);
     return result.rows[0]?.pi_id === piId;
+  }
+
+  static async findByLdapDnBatch(ldapDns: string[]): Promise<Student[]> {
+    if (ldapDns.length === 0) return [];
+    
+    const placeholders = ldapDns.map((_, index) => `$${index + 1}`).join(', ');
+    const query = `SELECT * FROM students WHERE ldap_dn IN (${placeholders})`;
+    const result = await pool.query(query, ldapDns);
+    return result.rows;
+  }
+
+  static async upsert(data: Omit<Student, 'id' | 'created_at' | 'updated_at'>): Promise<Student> {
+    const query = `
+      INSERT INTO students (username, chinese_name, email, phone, pi_id, ldap_dn, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (username) DO UPDATE SET
+        chinese_name = EXCLUDED.chinese_name,
+        email = EXCLUDED.email,
+        phone = EXCLUDED.phone,
+        pi_id = EXCLUDED.pi_id,
+        ldap_dn = EXCLUDED.ldap_dn,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `;
+    const values = [data.username, data.chinese_name, data.email, data.phone, data.pi_id, data.ldap_dn, data.status];
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
+
+  static async markDeletedByLdapDns(excludeLdapDns: string[]): Promise<number> {
+    if (excludeLdapDns.length === 0) {
+      // 如果没有排除的DN，标记所有学生为已删除
+      const result = await pool.query("UPDATE students SET status = 'deleted' WHERE status != 'deleted'");
+      return result.rowCount;
+    }
+    
+    const placeholders = excludeLdapDns.map((_, index) => `$${index + 1}`).join(', ');
+    const query = `
+      UPDATE students SET status = 'deleted' 
+      WHERE ldap_dn NOT IN (${placeholders}) AND status != 'deleted'
+    `;
+    const result = await pool.query(query, excludeLdapDns);
+    return result.rowCount;
+  }
+
+  static async findPIByUsername(username: string): Promise<{ id: number } | null> {
+    const query = 'SELECT id FROM pis WHERE username = $1';
+    const result = await pool.query(query, [username]);
+    return result.rows[0] || null;
   }
 }
 
@@ -251,6 +381,26 @@ export class AdminModel {
   static async findById(id: number): Promise<Admin | null> {
     const query = 'SELECT * FROM admins WHERE id = $1 AND is_active = true';
     const result = await pool.query(query, [id]);
+    return result.rows[0] || null;
+  }
+
+  static async create(data: Omit<Admin, 'id' | 'created_at'>): Promise<Admin> {
+    const query = `
+      INSERT INTO admins (username, full_name, email, role, password_hash, ldap_dn, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `;
+    const values = [data.username, data.full_name, data.email, data.role, data.password_hash, data.ldap_dn, data.is_active];
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
+
+  static async update(id: number, data: Partial<Admin>): Promise<Admin | null> {
+    const fields = Object.keys(data).filter(key => key !== 'id' && key !== 'created_at');
+    const values = fields.map((key, index) => `${key} = $${index + 2}`).join(', ');
+    const query = `UPDATE admins SET ${values} WHERE id = $1 RETURNING *`;
+    const params = [id, ...fields.map(key => data[key as keyof Admin])];
+    const result = await pool.query(query, params);
     return result.rows[0] || null;
   }
 }

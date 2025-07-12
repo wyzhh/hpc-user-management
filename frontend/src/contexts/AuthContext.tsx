@@ -32,12 +32,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (authService.isAuthenticated()) {
           const storedUser = authService.getCurrentUserFromStorage();
           if (storedUser) {
+            console.log('初始化认证状态，用户角色:', storedUser.role);
             setUser(storedUser);
             setIsAuthenticated(true);
             
-            // 尝试刷新用户信息
-            await refreshUser();
+            // 尝试验证当前用户信息是否有效
+            try {
+              await refreshUser();
+            } catch (error) {
+              console.error('验证用户信息失败，执行登出:', error);
+              await logout();
+            }
+          } else {
+            console.log('无有效用户信息，清理状态');
+            await logout();
           }
+        } else {
+          console.log('用户未认证');
+          setUser(null);
+          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error('初始化认证状态失败:', error);
@@ -74,11 +87,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
+      // 先清理旧状态
+      setUser(null);
+      setIsAuthenticated(false);
+      
       const response = await authService.login({ username, password }, userType);
       
       if (response.success && response.data) {
         setUser(response.data.user);
         setIsAuthenticated(true);
+        console.log('登录成功，用户角色:', response.data.user.role);
         return { success: true, message: '登录成功' };
       } else {
         return { success: false, message: response.message || '登录失败' };
@@ -94,10 +112,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<void> => {
     try {
       setIsLoading(true);
+      
+      // 立即清理状态
+      setUser(null);
+      setIsAuthenticated(false);
+      
+      // 调用API登出并清理localStorage
       await authService.logout();
+      
+      console.log('用户已登出');
     } catch (error) {
       console.error('登出错误:', error);
     } finally {
+      // 确保状态被清理
       setUser(null);
       setIsAuthenticated(false);
       setIsLoading(false);

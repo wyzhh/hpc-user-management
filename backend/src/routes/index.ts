@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authRoutes from './auth';
 import studentRoutes from './student';
 import requestRoutes from './request';
+import userRoutes from './user';
 import { requestLogger } from '../middleware/auth';
 
 const router = Router();
@@ -13,6 +14,7 @@ router.use(requestLogger);
 router.use('/auth', authRoutes);
 router.use('/students', studentRoutes);
 router.use('/requests', requestRoutes);
+router.use('/admin/users', userRoutes);
 
 // API文档路由
 router.get('/', (req, res) => {
@@ -42,6 +44,17 @@ router.get('/', (req, res) => {
         'GET /api/requests/:id': '获取申请详情',
         'POST /api/requests/:id/approve': '管理员批准申请',
         'POST /api/requests/:id/reject': '管理员拒绝申请',
+      },
+      users: {
+        'GET /api/admin/users/pis': '获取PI用户列表',
+        'GET /api/admin/users/pis/:id': '获取PI用户详情',
+        'PUT /api/admin/users/pis/:id': '更新PI用户',
+        'PUT /api/admin/users/pis/:id/status': '切换PI用户状态',
+        'GET /api/admin/users/admins': '获取管理员列表',
+        'POST /api/admin/users/admins': '创建管理员',
+        'PUT /api/admin/users/admins/:id/password': '重置管理员密码',
+        'GET /api/admin/users/stats': '获取用户统计',
+        'POST /api/admin/users/sync-ldap': '同步LDAP用户',
       },
     },
     docs: 'https://github.com/your-org/hpc-user-management/blob/main/docs/api.md',

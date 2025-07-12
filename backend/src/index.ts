@@ -8,6 +8,7 @@ import config from './config';
 import apiRoutes from './routes';
 import { testConnection } from './config/database';
 import { ldapService } from './services/ldap';
+import { SchedulerService } from './services/scheduler';
 
 const app = express();
 
@@ -89,11 +90,22 @@ const server = app.listen(config.port, async () => {
   
   // 测试LDAP连接
   await ldapService.testConnection();
+  
+  // 启动定时同步任务
+  if (config.nodeEnv !== 'test') {
+    SchedulerService.startAllTasks();
+    
+    // 启动时立即同步：稍微延迟以确保系统完全启动
+    setTimeout(async () => {
+      await SchedulerService.smartStartupSync();
+    }, 1000); // 延迟1秒执行，确保启动时立即同步
+  }
 });
 
 // 优雅关闭
 process.on('SIGTERM', () => {
   console.log('收到SIGTERM信号，开始优雅关闭...');
+  SchedulerService.stopAllTasks();
   server.close(() => {
     console.log('服务器已关闭');
     process.exit(0);
@@ -102,6 +114,7 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   console.log('收到SIGINT信号，开始优雅关闭...');
+  SchedulerService.stopAllTasks();
   server.close(() => {
     console.log('服务器已关闭');
     process.exit(0);
