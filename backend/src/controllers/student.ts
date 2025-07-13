@@ -92,8 +92,8 @@ export class StudentController {
       }
 
       // 检查用户名是否已存在（LDAP）
-      const ldapExists = await ldapService.checkUserExists(studentData.username, false);
-      if (ldapExists) {
+      const ldapUser = await ldapService.getUserByUsername(studentData.username);
+      if (ldapUser) {
         return res.status(409).json({
           success: false,
           message: '用户名在LDAP中已存在',
@@ -105,7 +105,7 @@ export class StudentController {
       const request = await RequestModel.create({
         pi_id: piId,
         request_type: 'create',
-        student_data: studentData,
+        student_user_id: null, // 新学生申请，暂时没有user_id
         status: 'pending',
         reason: studentData.reason,
       });
@@ -193,7 +193,7 @@ export class StudentController {
       const request = await RequestModel.create({
         pi_id: piId,
         request_type: 'delete',
-        student_id: student_id,
+        student_user_id: student_id,
         status: 'pending',
         reason: reason,
       });
@@ -242,9 +242,9 @@ export class StudentController {
       const dbExists = await StudentModel.findByUsername(username);
       
       // 检查LDAP中是否存在
-      const ldapExists = await ldapService.checkUserExists(username, false);
+      const ldapUser = await ldapService.getUserByUsername(username);
 
-      const available = !dbExists && !ldapExists;
+      const available = !dbExists && !ldapUser;
 
       res.json({
         success: true,

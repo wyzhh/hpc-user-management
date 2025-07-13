@@ -15,6 +15,7 @@
     "db:seed": "knex seed:run",
     "init": "node scripts/init-system.js",
     "check-ldap": "node scripts/check-ldap-config.js",
+    "test-ldap": "node scripts/test-ldap-config.js",
     "change-admin-password": "node scripts/change-admin-password.js"
   },
   "keywords": [

@@ -1,21 +1,16 @@
 # HPC用户管理系统 - 管理员配置
 # 定义哪些用户是系统管理员
+# 注意：full_name、email等信息会从LDAP自动获取，这里只需配置用户名和角色
 
 # 系统管理员配置
 admins:
   - username: "zhang_wei"         # 从LDAP用户中指定的管理员
-    full_name: "张伟"
-    email: "zhang.wei@hpc.university.edu"
     auth_type: "ldap"             # LDAP认证
     role: "super_admin"           # 超级管理员
-    uid_number: 10001             # 来自LDAP的uidNumber
 
   - username: "li_ming"           # 从LDAP用户中指定的普通管理员
-    full_name: "李明"
-    email: "li.ming@hpc.university.edu"
     auth_type: "ldap"
     role: "admin"                 # 普通管理员
-    uid_number: 10002             # 来自LDAP的uidNumber
     permissions:                  # 权限列表
       - "user_management"
       - "role_assignment"

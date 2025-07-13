@@ -1,0 +1,151 @@
+# HPC用户管理系统 - LDAP配置文件
+# 这个文件包含所有LDAP相关的配置，修改此文件后重启应用即可生效
+
+# LDAP服务器基本连接配置
+server:
+  # LDAP服务器地址和端口
+  url: "ldap://127.0.0.1:389"
+  
+  # 管理员绑定DN和密码（用于系统查询用户信息）
+  bind_dn: "cn=admin,dc=hpc,dc=cau"
+  bind_password: "admin123"
+  
+  # 基础DN
+  base_dn: "dc=hpc,dc=cau"
+  
+  # 连接超时设置（毫秒）
+  timeout: 10000
+  connect_timeout: 5000
+  idle_timeout: 300000
+
+# 组织架构配置
+organizational_units:
+  # 用户OU - 用户账户存储位置
+  users: "ou=People,dc=hpc,dc=cau"
+  
+  # 用户组OU - 用户组存储位置  
+  groups: "ou=Group,dc=hpc,dc=cau"
+
+# LDAP查询过滤器配置
+filters:
+  # 用户查询过滤器
+  user_base: "(objectClass=posixAccount)"
+  
+  # 用户组查询过滤器  
+  group_base: "(objectClass=posixGroup)"
+  
+  # 特定用户查询模板（{username}会被实际用户名替换）
+  user_by_username: "(uid={username})"
+  
+  # 按用户组查询用户
+  users_by_group: "(&(objectClass=posixAccount)(gidNumber={gid}))"
+  
+  # 搜索用户（支持模糊查询）
+  user_search: "(uid=*{term}*)"
+
+# LDAP属性映射配置
+attributes:
+  # 用户属性映射
+  user:
+    username: "uid"           # 用户名
+    user_id: "uidNumber"      # 用户ID
+    group_id: "gidNumber"     # 主组ID
+    home_directory: "homeDirectory" # 主目录
+    
+  # 用户组属性映射
+  group:
+    name: "cn"                # 组名
+    group_id: "gidNumber"     # 组ID
+    members: "memberUid"      # 组成员（用户名列表）
+
+# 查询结果属性列表（优化查询性能，只获取需要的属性）
+query_attributes:
+  # 基本用户查询属性
+  basic_user:
+    - "uid"
+    - "uidNumber" 
+    - "gidNumber"
+    - "homeDirectory"
+    
+  # 详细用户查询属性
+  detailed_user:
+    - "uid"
+    - "uidNumber"
+    - "gidNumber"
+    - "homeDirectory" 
+    
+  # 用户组查询属性
+  group:
+    - "cn"
+    - "gidNumber"
+    - "memberUid"
+
+# 认证配置
+authentication:
+  # 用户DN构造模板
+  user_dn_templates:
+    # 主要模板
+    - "uid={username},ou=People,dc=hpc,dc=cau"
+
+# 管理员配置
+admin_config:
+  # 指定管理员用户名列表
+  admin_users:
+    - "wyuzhan"    # 将张伟设置为管理
+  
+  # 默认管理员角色
+  default_role: "admin"
+
+# 用户同步配置
+synchronization:
+  # 同步范围
+  scope:
+    # 要同步的用户OU列表
+    user_ous:
+      - "ou=People,dc=hpc,dc=cau"
+      
+    # 要同步的用户组OU列表  
+    group_ous:
+      - "ou=Group,dc=hpc,dc=cau"
+    
+    # 排除的用户过滤器（这些用户不会被同步）
+    exclude_users: "(|(uid=admin)(uid=root)(uid=nobody))"
+  
+  # 同步策略
+  strategy:
+    # 是否自动创建用户
+    auto_create_users: true
+    
+    # 是否自动更新用户信息
+    auto_update_users: true
+    
+    # 是否自动禁用不存在的用户
+    auto_disable_missing_users: true
+    
+    # 批处理大小
+    batch_size: 100
+
+# 日志配置
+logging:
+  # 是否启用LDAP操作日志
+  enabled: true
+  
+  # 日志级别：debug, info, warn, error
+  level: "info"
+  
+  # 是否记录查询详情
+  log_queries: false
+  
+  # 是否记录认证尝试
+  log_auth_attempts: true
+  
+  # 是否记录同步操作
+  log_sync_operations: true
+
+# 调试和测试配置
+debug:
+  # 是否启用调试模式
+  enabled: false
+  
+  # 是否启用LDAP协议调试
+  ldap_debug: false

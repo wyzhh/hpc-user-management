@@ -315,47 +315,83 @@ export class UserController {
     return UserController.importAllUsersFromLDAP(req, res);
   }
 
+  // 获取所有用户（LDAP用户）
+  static async getAllUsers(req: Request, res: Response) {
+    try {
+      const { page = 1, limit = 10, active, search } = req.query;
+      const pageNum = parseInt(page as string);
+      const limitNum = parseInt(limit as string);
+      const activeFilter = active !== undefined ? active === 'true' : null;
+
+      let users: User[];
+      let total: number;
+
+      if (search) {
+        const searchStr = search as string;
+        const allResult = await UserModel.getAll(1, 10000, activeFilter);
+        const filtered = allResult.users.filter(user => 
+          user.username.toLowerCase().includes(searchStr.toLowerCase()) ||
+          (user.full_name && user.full_name.toLowerCase().includes(searchStr.toLowerCase()))
+        );
+        total = filtered.length;
+        const startIndex = (pageNum - 1) * limitNum;
+        users = filtered.slice(startIndex, startIndex + limitNum);
+      } else {
+        const result = await UserModel.getAll(pageNum, limitNum, activeFilter);
+        users = result.users;
+        total = result.total;
+      }
+
+      res.json({
+        success: true,
+        message: '获取所有用户成功',
+        data: {
+          users,
+          total,
+          page: pageNum,
+          limit: limitNum
+        },
+        code: 200
+      });
+    } catch (error) {
+      console.error('获取所有用户失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '获取所有用户失败',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        code: 500
+      });
+    }
+  }
+
   // 获取用户统计
   static async getUserStats(req: Request, res: Response) {
     try {
-      // 获取PI统计 - 修复：第一个参数应该是false获取所有用户
-      const allPIs = await PIModel.getAll(1, 1000, false); // 获取所有PI（包括不活跃）
-      const activePIs = await PIModel.getAll(1, 1000, true); // 获取活跃PI
+      // 获取PI统计
+      const allPIs = await PIModel.getAll(1, 1000, false);
+      const activePIs = await PIModel.getAll(1, 1000, true);
 
-      // 获取学生统计 - 修复：使用StudentModel.getAll获取所有学生
-      const allStudents = await StudentModel.getAll(1, 1000); // 获取所有学生
+      // 获取学生统计
+      const allStudents = await StudentModel.getAll(1, 1000);
       const activeStudents = allStudents.students.filter(s => s.status === 'active');
 
-      // 管理员统计（简化处理）
-      const totalAdmins = 1;
-      const activeAdmins = 1;
+      // 获取所有用户统计
+      const allUsers = await UserModel.getAll(1, 10000, null);
+      const activeUsers = await UserModel.getAll(1, 10000, true);
 
-      // 获取最近的用户（简化处理）
+      // 获取最近的用户
       const recentPIs = allPIs.pis.slice(0, 5);
-      const recentAdmins = [
-        {
-          id: 1,
-          username: 'admin',
-          full_name: '系统管理员',
-          email: 'admin@hpc.university.edu',
-          role: 'admin',
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ];
 
       res.json({
         success: true,
         data: {
           total_pis: allPIs.total,
           active_pis: activePIs.total,
-          total_admins: totalAdmins,
-          active_admins: activeAdmins,
           total_students: allStudents.total,
           active_students: activeStudents.length,
-          recent_pis: recentPIs,
-          recent_admins: recentAdmins
+          total_users: allUsers.total,
+          active_users: activeUsers.total,
+          recent_pis: recentPIs
         },
         message: '获取用户统计成功'
       });

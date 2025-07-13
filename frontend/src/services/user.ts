@@ -221,12 +221,11 @@ class UserService {
   async getUserStats(): Promise<ApiResponse<{
     total_pis: number;
     active_pis: number;
-    total_admins: number;
-    active_admins: number;
     total_students: number;
     active_students: number;
+    total_users: number;
+    active_users: number;
     recent_pis: PIUser[];
-    recent_admins: AdminUser[];
   }>> {
     return await apiCall('GET', '/users/stats');
   }
@@ -277,6 +276,34 @@ class UserService {
   }>> {
     const params = lastSyncTime ? { lastSyncTime } : undefined;
     return await apiCall('POST', '/users/sync-ldap-incremental', undefined, params);
+  }
+
+  // 获取所有用户（LDAP用户）
+  async getAllUsers(
+    page = 1,
+    limit = 10,
+    active?: boolean,
+    search?: string
+  ): Promise<ApiResponse<PaginatedResponse<any>>> {
+    const params: any = { page, limit };
+    if (active !== undefined) params.active = active;
+    if (search) params.search = search;
+    
+    const response = await apiCall<{ users: any[]; total: number }>('GET', '/users/all', undefined, params);
+    
+    if (response.success && response.data) {
+      return {
+        ...response,
+        data: {
+          items: response.data.users,
+          total: response.data.total,
+          page,
+          limit
+        }
+      };
+    }
+    
+    return response as any;
   }
 
   // 获取用户状态选项

@@ -7,7 +7,7 @@ const { Search } = Input;
 const { Option } = Select;
 
 interface UserListProps {
-  userType: 'pi' | 'admin' | 'student';
+  userType: 'pi' | 'admin' | 'student' | 'all_users';
   onCreateUser?: () => void;
   onEditUser?: (user: PIUser | AdminUser | StudentUser) => void;
   onViewUser?: (user: PIUser | AdminUser | StudentUser) => void;
@@ -32,7 +32,6 @@ const UserList: React.FC<UserListProps> = ({
     pageSize: 10,
     total: 0,
   });
-  const [statusFilter, setStatusFilter] = useState<boolean | undefined>(undefined);
   const [searchText, setSearchText] = useState('');
   const [syncResultModalVisible, setSyncResultModalVisible] = useState(false);
   const [syncResult, setSyncResult] = useState<any>(null);
@@ -46,6 +45,8 @@ const UserList: React.FC<UserListProps> = ({
         response = await userService.getPIUsers(page, pageSize, statusOrActive as boolean, search);
       } else if (userType === 'admin') {
         response = await userService.getAdminUsers(page, pageSize, statusOrActive as boolean, search);
+      } else if (userType === 'all_users') {
+        response = await userService.getAllUsers(page, pageSize, statusOrActive as boolean, search);
       } else {
         // 学生用户
         response = await userService.getStudentUsers(page, pageSize, statusOrActive as string, search);
@@ -90,7 +91,7 @@ const UserList: React.FC<UserListProps> = ({
         
       if (response.success) {
         message.success(`用户状态已更新`);
-        loadUsers(pagination.current, pagination.pageSize, statusFilter, searchText);
+        loadUsers(pagination.current, pagination.pageSize, undefined, searchText);
       } else {
         message.error('更新用户状态失败: ' + response.message);
       }
@@ -106,7 +107,7 @@ const UserList: React.FC<UserListProps> = ({
       const response = await userService.deleteStudentUser(student.id);
       if (response.success) {
         message.success('学生账号删除成功');
-        loadUsers(pagination.current, pagination.pageSize, statusFilter, searchText);
+        loadUsers(pagination.current, pagination.pageSize, undefined, searchText);
       } else {
         message.error('删除学生账号失败: ' + response.message);
       }
@@ -130,7 +131,7 @@ const UserList: React.FC<UserListProps> = ({
           // 兼容旧格式
           message.success(`同步完成：新增 ${response.data.new_pis} 个，更新 ${response.data.updated_pis} 个PI用户`);
         }
-        loadUsers(pagination.current, pagination.pageSize, statusFilter, searchText);
+        loadUsers(pagination.current, pagination.pageSize, undefined, searchText);
       } else {
         message.error('完全同步LDAP用户失败: ' + response.message);
       }
@@ -150,7 +151,7 @@ const UserList: React.FC<UserListProps> = ({
       if (response.success && response.data) {
         setSyncResult(response.data.sync_result);
         setSyncResultModalVisible(true);
-        loadUsers(pagination.current, pagination.pageSize, statusFilter, searchText);
+        loadUsers(pagination.current, pagination.pageSize, undefined, searchText);
       } else {
         message.error('增量同步LDAP用户失败: ' + response.message);
       }
@@ -162,16 +163,11 @@ const UserList: React.FC<UserListProps> = ({
     }
   };
 
-  // 状态过滤
-  const handleStatusFilter = (value: boolean | string | undefined) => {
-    setStatusFilter(value as boolean | undefined);
-    loadUsers(1, pagination.pageSize, value, searchText);
-  };
 
   // 搜索功能
   const handleSearch = (value: string) => {
     setSearchText(value);
-    loadUsers(1, pagination.pageSize, statusFilter, value);
+    loadUsers(1, pagination.pageSize, undefined, value);
   };
 
   // PI用户表格列
@@ -393,6 +389,88 @@ const UserList: React.FC<UserListProps> = ({
     },
   ];
 
+  // 所有用户表格列
+  const allUsersColumns = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      key: 'id',
+      width: 80,
+    },
+    {
+      title: '用户名',
+      dataIndex: 'username',
+      key: 'username',
+      width: 120,
+    },
+    {
+      title: 'UID',
+      dataIndex: 'uid_number',
+      key: 'uid_number',
+      width: 100,
+    },
+    {
+      title: 'GID',
+      dataIndex: 'gid_number',
+      key: 'gid_number',
+      width: 100,
+    },
+    {
+      title: '家目录',
+      dataIndex: 'home_directory',
+      key: 'home_directory',
+      width: 200,
+      render: (path: string) => path || '-',
+    },
+    {
+      title: 'LDAP状态',
+      dataIndex: 'is_deleted_from_ldap',
+      key: 'is_deleted_from_ldap',
+      width: 120,
+      render: (isDeleted: boolean) => (
+        <Tag color={isDeleted ? 'red' : 'green'}>
+          {isDeleted ? '已从LDAP删除' : 'LDAP中存在'}
+        </Tag>
+      ),
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 150,
+      render: (date: string) => (
+        <Tooltip title={userService.formatTime(date)}>
+          <span>{new Date(date).toLocaleDateString()}</span>
+        </Tooltip>
+      ),
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 150,
+      render: (_: any, record: any) => (
+        <Space size="small">
+          <Button
+            type="link"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => onViewUser?.(record)}
+          >
+            查看
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => onEditUser?.(record)}
+          >
+            编辑
+          </Button>
+        </Space>
+      ),
+    },
+  ];
+
   // 学生表格列
   const studentColumns = [
     {
@@ -527,26 +605,14 @@ const UserList: React.FC<UserListProps> = ({
           <Search
             placeholder={`搜索${
               userType === 'pi' ? 'PI用户' : 
-              userType === 'admin' ? '管理员' : '学生'
+              userType === 'admin' ? '管理员' : 
+              userType === 'all_users' ? '用户' : '学生'
             }名称、邮箱`}
             allowClear
             style={{ width: 250 }}
             onSearch={handleSearch}
             onChange={(e) => !e.target.value && handleSearch('')}
           />
-          <Select
-            placeholder="筛选状态"
-            allowClear
-            style={{ width: 120 }}
-            value={statusFilter}
-            onChange={handleStatusFilter}
-          >
-            {(userType === 'student' ? userService.getStudentStatusOptions() : userService.getStatusOptions()).map(option => (
-              <Option key={option.value.toString()} value={option.value}>
-                {option.label}
-              </Option>
-            ))}
-          </Select>
         </Space>
         <Space>
           {userType === 'pi' && (
@@ -592,7 +658,7 @@ const UserList: React.FC<UserListProps> = ({
             showQuickJumper: true,
             showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
             onChange: (page, pageSize) => {
-              loadUsers(page, pageSize, statusFilter, searchText);
+              loadUsers(page, pageSize, undefined, searchText);
             },
           }}
           scroll={{ x: 1000 }}
@@ -609,7 +675,24 @@ const UserList: React.FC<UserListProps> = ({
             showQuickJumper: true,
             showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
             onChange: (page, pageSize) => {
-              loadUsers(page, pageSize, statusFilter, searchText);
+              loadUsers(page, pageSize, undefined, searchText);
+            },
+          }}
+          scroll={{ x: 1000 }}
+        />
+      ) : userType === 'all_users' ? (
+        <Table
+          columns={allUsersColumns}
+          dataSource={users as any[]}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            ...pagination,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
+            onChange: (page, pageSize) => {
+              loadUsers(page, pageSize, undefined, searchText);
             },
           }}
           scroll={{ x: 1000 }}
@@ -626,7 +709,7 @@ const UserList: React.FC<UserListProps> = ({
             showQuickJumper: true,
             showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
             onChange: (page, pageSize) => {
-              loadUsers(page, pageSize, statusFilter, searchText);
+              loadUsers(page, pageSize, undefined, searchText);
             },
           }}
           scroll={{ x: 1000 }}

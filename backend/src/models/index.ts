@@ -122,7 +122,12 @@ export class PIModel {
 
 export class StudentModel {
   static async findByUsername(username: string): Promise<Student | null> {
-    const query = 'SELECT * FROM students WHERE username = $1';
+    const query = `
+      SELECT s.*, u.username, u.full_name, u.email 
+      FROM students s 
+      JOIN users u ON s.user_id = u.id 
+      WHERE u.username = $1
+    `;
     const result = await pool.query(query, [username]);
     return result.rows[0] || null;
   }
@@ -311,11 +316,11 @@ export class StudentModel {
 export class RequestModel {
   static async create(data: Omit<Request, 'id' | 'requested_at' | 'reviewed_at'>): Promise<Request> {
     const query = `
-      INSERT INTO requests (pi_id, request_type, student_id, student_data, status, reason, admin_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO requests (pi_id, request_type, student_user_id, status, reason)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
     `;
-    const values = [data.pi_id, data.request_type, data.student_id, JSON.stringify(data.student_data), data.status, data.reason, data.admin_id];
+    const values = [data.pi_id, data.request_type, data.student_user_id, data.status, data.reason];
     const result = await pool.query(query, values);
     return result.rows[0];
   }
