@@ -35,6 +35,7 @@ import { roleAssignmentService } from '../../services/roleAssignment';
 import { User, UserFilterOptions, PaginationOptions } from '../../types';
 import RoleAssignmentModal from './RoleAssignmentModal';
 import UserImportModal from './UserImportModal';
+import UserEditModal from './UserEditModal';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -59,6 +60,8 @@ const EnhancedUserList: React.FC<EnhancedUserListProps> = ({ onRefresh }) => {
   const [roleModalVisible, setRoleModalVisible] = useState(false);
   const [importModalVisible, setImportModalVisible] = useState(false);
   const [roleModalMode, setRoleModalMode] = useState<'assign' | 'change'>('assign');
+  const [userEditModalVisible, setUserEditModalVisible] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   // 加载用户列表
   const loadUsers = async (page = 1, newFilters?: UserFilterOptions) => {
@@ -134,6 +137,19 @@ const EnhancedUserList: React.FC<EnhancedUserListProps> = ({ onRefresh }) => {
     setSelectedUser(user);
     setRoleModalMode('change');
     setRoleModalVisible(true);
+  };
+
+  // 编辑用户信息
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setUserEditModalVisible(true);
+  };
+
+  // 编辑用户信息成功回调
+  const handleEditUserSuccess = () => {
+    setUserEditModalVisible(false);
+    setEditingUser(null);
+    handleRefresh();
   };
 
   // 取消角色分配
@@ -276,7 +292,7 @@ const EnhancedUserList: React.FC<EnhancedUserListProps> = ({ onRefresh }) => {
     {
       title: '操作',
       key: 'action',
-      width: 200,
+      width: 240,
       fixed: 'right' as const,
       render: (_: any, record: User) => (
         <Space size="small" wrap>
@@ -285,6 +301,14 @@ const EnhancedUserList: React.FC<EnhancedUserListProps> = ({ onRefresh }) => {
               type="text"
               icon={<EyeOutlined />}
               onClick={() => handleViewUser(record)}
+            />
+          </Tooltip>
+          
+          <Tooltip title="编辑用户">
+            <Button
+              type="text"
+              icon={<SettingOutlined />}
+              onClick={() => handleEditUser(record)}
             />
           </Tooltip>
           
@@ -527,6 +551,14 @@ const EnhancedUserList: React.FC<EnhancedUserListProps> = ({ onRefresh }) => {
         visible={importModalVisible}
         onCancel={() => setImportModalVisible(false)}
         onSuccess={handleRefresh}
+      />
+
+      {/* 用户编辑模态框 */}
+      <UserEditModal
+        visible={userEditModalVisible}
+        user={editingUser}
+        onCancel={() => setUserEditModalVisible(false)}
+        onSuccess={handleEditUserSuccess}
       />
     </div>
   );

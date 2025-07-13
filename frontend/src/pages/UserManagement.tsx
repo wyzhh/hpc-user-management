@@ -3,7 +3,9 @@ import { Card, Space, Statistic, Row, Col, message } from 'antd';
 import { UserOutlined, UsergroupAddOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import UserList from '../components/user/UserList';
 import UserModal from '../components/user/UserModal';
+import UserEditModal from '../components/user/UserEditModal';
 import { PIUser, AdminUser, StudentUser, userService } from '../services/user';
+import { User } from '../types';
 
 
 interface UserStats {
@@ -16,6 +18,8 @@ const UserManagement: React.FC = () => {
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view');
   const [modalUserType, setModalUserType] = useState<'pi' | 'admin' | 'student'>('pi');
   const [selectedUser, setSelectedUser] = useState<PIUser | AdminUser | StudentUser | null>(null);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -56,12 +60,37 @@ const UserManagement: React.FC = () => {
     setModalVisible(true);
   };
 
-  // 编辑用户
+  // 编辑用户 - 使用新的编辑模态框
   const handleEditUser = (user: PIUser | AdminUser | StudentUser, userType: 'pi' | 'admin' | 'student') => {
-    setSelectedUser(user);
-    setModalUserType(userType);
-    setModalMode('edit');
-    setModalVisible(true);
+    // 转换用户类型映射
+    let mappedUserType: 'pi' | 'student' | 'unassigned';
+    if (userType === 'admin') {
+      mappedUserType = 'unassigned'; // 管理员映射为未分配
+    } else {
+      mappedUserType = userType as 'pi' | 'student';
+    }
+
+    // 转换为User类型
+    const editUser: User = {
+      id: user.id,
+      username: user.username,
+      full_name: (user as any).full_name || (user as any).chinese_name,
+      email: user.email,
+      phone: (user as any).phone || '',
+      user_type: mappedUserType,
+      is_active: (user as any).is_active || true,
+      is_deleted_from_ldap: false,
+      ldap_dn: (user as any).ldap_dn || '',
+      uid_number: (user as any).uid_number || 0,
+      gid_number: (user as any).gid_number || 0,
+      home_directory: (user as any).home_directory || '',
+      login_shell: (user as any).login_shell || '',
+      created_at: (user as any).created_at || '',
+      updated_at: (user as any).updated_at || '',
+      last_sync_at: (user as any).last_sync_at || ''
+    };
+    setEditingUser(editUser);
+    setEditModalVisible(true);
   };
 
   // 重置密码 - 暂时不使用
@@ -87,6 +116,16 @@ const UserManagement: React.FC = () => {
   const handleModalSuccess = () => {
     setModalVisible(false);
     setSelectedUser(null);
+    // 触发列表刷新
+    setRefreshKey(prev => prev + 1);
+    // 重新加载统计数据
+    loadStats();
+  };
+
+  // 编辑模态框成功回调
+  const handleEditModalSuccess = () => {
+    setEditModalVisible(false);
+    setEditingUser(null);
     // 触发列表刷新
     setRefreshKey(prev => prev + 1);
     // 重新加载统计数据
@@ -158,7 +197,7 @@ const UserManagement: React.FC = () => {
         />
       </Card>
 
-      {/* 用户模态框 */}
+      {/* 用户查看模态框 */}
       <UserModal
         visible={modalVisible}
         mode={modalMode}
@@ -166,6 +205,14 @@ const UserManagement: React.FC = () => {
         user={selectedUser}
         onSuccess={handleModalSuccess}
         onCancel={handleCloseModal}
+      />
+
+      {/* 用户编辑模态框 */}
+      <UserEditModal
+        visible={editModalVisible}
+        user={editingUser}
+        onCancel={() => setEditModalVisible(false)}
+        onSuccess={handleEditModalSuccess}
       />
     </div>
   );

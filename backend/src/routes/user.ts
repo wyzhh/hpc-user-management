@@ -35,6 +35,7 @@ router.post('/import-specific', UserController.importSpecificUsers);
 // 所有用户管理（新架构）
 router.get('/all', UserController.getAllUsers);
 router.get('/unassigned', UserController.getUnassignedUsers);
+router.put('/:id', UserController.updateUser); // 通用编辑用户接口
 router.post('/assign-role', UserController.assignUserRole);
 router.post('/batch-assign-roles', UserController.batchAssignRoles);
 router.get('/suggest-roles/:gid_number', UserController.suggestRolesByGroup);

@@ -157,40 +157,60 @@ export class UserController {
     }
   }
 
-  // 更新PI用户
+  // 更新用户信息
   static async updatePIUser(req: Request, res: Response) {
     try {
       const { id } = req.params;
       const { full_name, email, department, phone, is_active } = req.body;
 
-      const updateData: Partial<PIInfo> = {};
-      if (full_name !== undefined) updateData.full_name = full_name;
-      if (email !== undefined) updateData.email = email;
-      if (department !== undefined) updateData.department = department;
-      if (phone !== undefined) updateData.phone = phone;
-      if (is_active !== undefined) updateData.is_active = is_active;
+      // 分离用户基础信息和PI专有信息
+      const userUpdateData: Partial<User> = {};
+      if (full_name !== undefined) userUpdateData.full_name = full_name;
+      if (email !== undefined) userUpdateData.email = email;
+      if (phone !== undefined) userUpdateData.phone = phone;
+      if (is_active !== undefined) userUpdateData.is_active = is_active;
 
-      const updatedPI = await PIModel.update(parseInt(id), updateData);
+      const piUpdateData: Partial<PIInfo> = {};
+      if (department !== undefined) piUpdateData.department = department;
 
-      if (!updatedPI) {
+      // 更新用户基础信息
+      let updatedUser = null;
+      if (Object.keys(userUpdateData).length > 0) {
+        updatedUser = await UserModel.update(parseInt(id), userUpdateData);
+      }
+
+      // 如果用户是PI，同时更新PI信息
+      let updatedPI = null;
+      if (Object.keys(piUpdateData).length > 0) {
+        // 查找是否存在对应的PI记录
+        const piQuery = 'SELECT id FROM pis WHERE user_id = $1';
+        const piResult = await pool.query(piQuery, [parseInt(id)]);
+        if (piResult.rows.length > 0) {
+          updatedPI = await PIModel.update(piResult.rows[0].id, piUpdateData);
+        }
+      }
+
+      // 检查用户是否存在
+      const user = await UserModel.findById(parseInt(id));
+      if (!user) {
         return res.status(404).json({
           success: false,
-          message: 'PI用户不存在',
+          message: '用户不存在',
           code: 404
         });
       }
 
       // 记录审计日志
       await AuditService.logAction(
-        'update_pi_user',
+        'update_user',
         'admin',
         req.user!.id,
-        { pi_id: parseInt(id), changes: updateData }
+        { user_id: parseInt(id), changes: { ...userUpdateData, ...piUpdateData } }
       );
 
       res.json({
         success: true,
-        data: updatedPI,
+        data: updatedUser || user,
         message: 'PI用户更新成功'
       });
     } catch (error) {
@@ -315,54 +335,6 @@ export class UserController {
     return UserController.importAllUsersFromLDAP(req, res);
   }
 
-  // 获取所有用户（LDAP用户）
-  static async getAllUsers(req: Request, res: Response) {
-    try {
-      const { page = 1, limit = 10, active, search } = req.query;
-      const pageNum = parseInt(page as string);
-      const limitNum = parseInt(limit as string);
-      const activeFilter = active !== undefined ? active === 'true' : null;
-
-      let users: User[];
-      let total: number;
-
-      if (search) {
-        const searchStr = search as string;
-        const allResult = await UserModel.getAll(1, 10000, activeFilter);
-        const filtered = allResult.users.filter(user => 
-          user.username.toLowerCase().includes(searchStr.toLowerCase()) ||
-          (user.full_name && user.full_name.toLowerCase().includes(searchStr.toLowerCase()))
-        );
-        total = filtered.length;
-        const startIndex = (pageNum - 1) * limitNum;
-        users = filtered.slice(startIndex, startIndex + limitNum);
-      } else {
-        const result = await UserModel.getAll(pageNum, limitNum, activeFilter);
-        users = result.users;
-        total = result.total;
-      }
-
-      res.json({
-        success: true,
-        message: '获取所有用户成功',
-        data: {
-          users,
-          total,
-          page: pageNum,
-          limit: limitNum
-        },
-        code: 200
-      });
-    } catch (error) {
-      console.error('获取所有用户失败:', error);
-      res.status(500).json({
-        success: false,
-        message: '获取所有用户失败',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        code: 500
-      });
-    }
-  }
 
   // 获取用户统计
   static async getUserStats(req: Request, res: Response) {
@@ -1590,6 +1562,71 @@ export class UserController {
       res.status(500).json({
         success: false,
         message: '获取PI和学生列表失败: ' + error.message,
+        code: 500
+      });
+    }
+  }
+
+  // 通用编辑用户接口 - 支持所有类型用户，只修改users表
+  static async updateUser(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { full_name, email, phone, is_active } = req.body;
+
+      // 验证用户是否存在
+      const user = await UserModel.findById(parseInt(id));
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: '用户不存在',
+          code: 404
+        });
+      }
+
+      // 准备更新数据 - 只更新users表
+      const userUpdateData: Partial<User> = {};
+      if (full_name !== undefined) userUpdateData.full_name = full_name;
+      if (email !== undefined) userUpdateData.email = email;
+      if (phone !== undefined) userUpdateData.phone = phone;
+      if (is_active !== undefined) userUpdateData.is_active = is_active;
+
+      // 更新用户信息
+      let updatedUser = user;
+      if (Object.keys(userUpdateData).length > 0) {
+        updatedUser = await UserModel.update(parseInt(id), userUpdateData);
+      }
+
+      if (!updatedUser) {
+        return res.status(500).json({
+          success: false,
+          message: '更新用户失败',
+          code: 500
+        });
+      }
+
+      // 记录审计日志
+      await AuditService.logAction(
+        'update_user',
+        'admin',
+        req.user!.id,
+        { 
+          user_id: parseInt(id), 
+          changes: userUpdateData,
+          user_type: user.user_type,
+          username: user.username
+        }
+      );
+
+      res.json({
+        success: true,
+        data: updatedUser,
+        message: '用户更新成功'
+      });
+    } catch (error) {
+      console.error('更新用户失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '更新用户失败',
         code: 500
       });
     }
