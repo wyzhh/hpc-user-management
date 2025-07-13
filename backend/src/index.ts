@@ -9,6 +9,7 @@ import apiRoutes from './routes';
 import { testConnection } from './config/database';
 import { ldapService } from './services/ldap';
 import { SchedulerService } from './services/scheduler';
+import { InitializationService } from './services/InitializationService';
 
 const app = express();
 
@@ -91,14 +92,26 @@ const server = app.listen(config.port, async () => {
   // 测试LDAP连接
   await ldapService.testConnection();
   
-  // 启动定时同步任务
-  if (config.nodeEnv !== 'test') {
-    SchedulerService.startAllTasks();
+  // 检查系统初始化状态
+  console.log('🔍 检查系统初始化状态...');
+  const initStatus = await InitializationService.checkInitializationStatus();
+  
+  if (!initStatus.isInitialized) {
+    console.log('⚠️  系统尚未初始化');
+    console.log(`📋 状态: ${initStatus.message}`);
+    console.log('🌐 请访问 http://localhost:3001/initialization 进行系统初始化');
+  } else {
+    console.log('✅ 系统已完成初始化');
     
-    // 启动时立即同步：稍微延迟以确保系统完全启动
-    setTimeout(async () => {
-      await SchedulerService.smartStartupSync();
-    }, 1000); // 延迟1秒执行，确保启动时立即同步
+    // 只有在系统已初始化的情况下才启动定时同步任务
+    if (config.nodeEnv !== 'test') {
+      SchedulerService.startAllTasks();
+      
+      // 启动时立即同步：稍微延迟以确保系统完全启动
+      setTimeout(async () => {
+        await SchedulerService.smartStartupSync();
+      }, 1000); // 延迟1秒执行，确保启动时立即同步
+    }
   }
 });
 

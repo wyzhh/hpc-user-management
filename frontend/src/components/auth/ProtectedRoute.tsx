@@ -5,7 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  roles?: ('pi' | 'admin')[];
+  roles?: ('pi' | 'admin' | 'student' | 'unassigned')[];
   redirectTo?: string;
 }
 
@@ -39,10 +39,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // 检查角色权限
-  if (roles.length > 0 && !roles.includes(user.role)) {
-    // 根据用户角色重定向到对应的首页
-    const defaultPath = user.role === 'admin' ? '/admin/dashboard' : '/dashboard';
-    return <Navigate to={defaultPath} replace />;
+  if (roles.length > 0) {
+    // 获取用户角色：管理员用户使用 role 字段，其他用户使用 user_type 字段
+    const userRole = user.role || user.user_type;
+    
+    if (!userRole || !roles.includes(userRole as any)) {
+      // 根据用户类型重定向到对应的首页
+      const defaultPath = '/dashboard'; // 暂时简化，所有用户都去dashboard
+      return <Navigate to={defaultPath} replace />;
+    }
   }
 
   // 通过所有检查，渲染子组件

@@ -62,7 +62,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       },
     ];
 
-    if (user?.role === 'pi') {
+    if (user?.user_type === 'pi') {
       return [
         ...commonItems,
         {
@@ -78,21 +78,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       ];
     }
 
-    if (user?.role === 'admin') {
-      return [
-        ...commonItems,
-        {
-          key: '/admin/requests',
-          icon: <FileTextOutlined />,
-          label: '申请审核',
-        },
-        {
-          key: '/admin/users',
-          icon: <TeamOutlined />,
-          label: '用户管理',
-        },
-      ];
-    }
+    // 暂时移除admin特定菜单，因为User类型中没有admin
+    // 这需要后续重新设计以支持AdminUser类型
 
     return commonItems;
   };
@@ -183,17 +170,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             <Space style={{ cursor: 'pointer' }}>
               <Avatar icon={<UserOutlined />} />
               <span>{user?.full_name || user?.username}</span>
-              {user?.role === 'admin' && (
-                <span style={{ 
-                  fontSize: 12, 
-                  color: '#1890ff',
-                  background: '#e6f7ff',
-                  padding: '2px 6px',
-                  borderRadius: 4,
-                }}>
-                  管理员
-                </span>
-              )}
+              {/* 暂时移除admin标签显示 */}
             </Space>
           </Dropdown>
         </Header>

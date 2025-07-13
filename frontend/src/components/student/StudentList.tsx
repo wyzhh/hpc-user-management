@@ -90,9 +90,9 @@ const StudentList: React.FC<StudentListProps> = ({
   const filteredStudents = students.filter(student => {
     if (!searchText) return true;
     return (
-      student.username.toLowerCase().includes(searchText.toLowerCase()) ||
-      student.chinese_name.toLowerCase().includes(searchText.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchText.toLowerCase())
+      student.username?.toLowerCase().includes(searchText.toLowerCase()) ||
+      student.chinese_name?.toLowerCase().includes(searchText.toLowerCase()) ||
+      student.email?.toLowerCase().includes(searchText.toLowerCase())
     );
   });
 

@@ -1,6 +1,7 @@
 import * as cron from 'node-cron';
 import config from '../config';
 import { SyncService } from './sync';
+import { userImportService } from './UserImportService';
 import { AuditService } from './audit';
 
 export class SchedulerService {
@@ -100,11 +101,10 @@ export class SchedulerService {
     // 每天凌晨2点执行完全同步
     const task = cron.schedule('0 2 * * *', async () => {
       try {
-        console.log('开始执行定时完全同步任务...');
-        const syncResult = await SyncService.syncAllUsers();
+        console.log('开始执行定时完全用户导入任务...');
+        const syncResult = await userImportService.importAllUsersFromLDAP();
 
-        // 记录审计日志
-        await SyncService.logSyncAudit(syncResult, 0); // 系统任务，performerId为0
+        // 记录审计日志 - 新格式直接记录
 
         await AuditService.logAction(
           'scheduled_full_sync',
@@ -151,24 +151,23 @@ export class SchedulerService {
       try {
         console.log('开始执行定时增量同步任务...');
         
-        // 获取上次同步时间（可以从配置或数据库中获取）
-        const lastSyncTime = await this.getLastSyncTime();
-        const syncResult = await SyncService.incrementalSync(lastSyncTime);
+        // 在新架构中，增量同步实际上也是全量导入（因为用户角色未分配）
+        console.log('执行增量用户导入（实际为全量导入）...');
+        const syncResult = await userImportService.importAllUsersFromLDAP();
 
+        const currentTime = new Date();
+        
         // 更新最后同步时间
-        await this.updateLastSyncTime(new Date());
+        await this.updateLastSyncTime(currentTime);
 
-        // 记录审计日志
-        await SyncService.logSyncAudit(syncResult, 0);
-
+        // 记录审计日志 - 新格式直接记录
         await AuditService.logAction(
           'scheduled_incremental_sync',
           'system',
           0,
           { 
             sync_result: syncResult,
-            last_sync_time: lastSyncTime?.toISOString(),
-            scheduled_time: new Date().toISOString()
+            scheduled_time: currentTime.toISOString()
           }
         );
 
@@ -263,10 +262,10 @@ export class SchedulerService {
   // 立即执行完全同步（用于手动触发）
   static async executeFullSyncNow(): Promise<any> {
     try {
-      console.log('手动触发完全同步任务...');
-      const syncResult = await SyncService.syncAllUsers();
+      console.log('手动触发完全用户导入任务...');
+      const syncResult = await userImportService.importAllUsersFromLDAP();
 
-      await SyncService.logSyncAudit(syncResult, 0);
+      // 记录审计日志 - 新格式直接记录
       await AuditService.logAction(
         'manual_full_sync',
         'system',
@@ -288,20 +287,20 @@ export class SchedulerService {
   // 立即执行增量同步（用于手动触发）
   static async executeIncrementalSyncNow(): Promise<any> {
     try {
-      console.log('手动触发增量同步任务...');
-      const lastSyncTime = await this.getLastSyncTime();
-      const syncResult = await SyncService.incrementalSync(lastSyncTime);
+      console.log('手动触发增量用户导入任务...');
+      const syncResult = await userImportService.importAllUsersFromLDAP();
 
-      await this.updateLastSyncTime(new Date());
-      await SyncService.logSyncAudit(syncResult, 0);
+      const currentTime = new Date();
+      await this.updateLastSyncTime(currentTime);
+      
+      // 记录审计日志 - 新格式直接记录
       await AuditService.logAction(
         'manual_incremental_sync',
         'system',
         0,
         { 
           sync_result: syncResult,
-          last_sync_time: lastSyncTime?.toISOString(),
-          trigger_time: new Date().toISOString()
+          trigger_time: currentTime.toISOString()
         }
       );
 

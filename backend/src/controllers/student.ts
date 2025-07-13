@@ -21,7 +21,10 @@ export class StudentController {
         success: true,
         message: '获取学生列表成功',
         code: 200,
-        data: result,
+        data: {
+          students: result.students,
+          total: result.total,
+        },
       });
     } catch (error) {
       console.error('获取学生列表错误:', error);
@@ -257,6 +260,28 @@ export class StudentController {
       });
     } catch (error) {
       console.error('检查用户名可用性错误:', error);
+      res.status(500).json({
+        success: false,
+        message: '服务器内部错误',
+        code: 500,
+      });
+    }
+  }
+
+  static async getMyStudentStats(req: Request, res: Response) {
+    try {
+      const piId = req.userId!;
+
+      const stats = await StudentModel.getStatsByPiId(piId);
+
+      res.json({
+        success: true,
+        message: '获取学生统计成功',
+        code: 200,
+        data: stats,
+      });
+    } catch (error) {
+      console.error('获取学生统计错误:', error);
       res.status(500).json({
         success: false,
         message: '服务器内部错误',

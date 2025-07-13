@@ -73,7 +73,7 @@ class UserService {
     if (active !== undefined) params.active = active;
     if (search) params.search = search;
     
-    const response = await apiCall<{ pis: PIUser[]; total: number }>('GET', '/admin/users/pis', undefined, params);
+    const response = await apiCall<{ pis: PIUser[]; total: number }>('GET', '/users/pis', undefined, params);
     
     if (response.success && response.data) {
       return {
@@ -104,7 +104,7 @@ class UserService {
     if (active !== undefined) params.active = active;
     if (search) params.search = search;
     
-    const response = await apiCall<{ admins: AdminUser[]; total: number }>('GET', '/admin/users/admins', undefined, params);
+    const response = await apiCall<{ admins: AdminUser[]; total: number }>('GET', '/users/admins', undefined, params);
     
     if (response.success && response.data) {
       return {
@@ -137,7 +137,7 @@ class UserService {
     if (search) params.search = search;
     if (piId) params.pi_id = piId;
     
-    const response = await apiCall<{ students: StudentUser[]; total: number }>('GET', '/admin/users/students', undefined, params);
+    const response = await apiCall<{ students: StudentUser[]; total: number }>('GET', '/users/students', undefined, params);
     
     if (response.success && response.data) {
       return {
@@ -159,62 +159,62 @@ class UserService {
 
   // 获取学生详情
   async getStudentUserById(id: number): Promise<ApiResponse<StudentUser>> {
-    return await apiCall<StudentUser>('GET', `/admin/users/students/${id}`);
+    return await apiCall<StudentUser>('GET', `/users/students/${id}`);
   }
 
   // 更新学生状态
   async updateStudentStatus(id: number, status: 'pending' | 'active' | 'deleted'): Promise<ApiResponse<StudentUser>> {
-    return await apiCall<StudentUser>('PUT', `/admin/users/students/${id}/status`, { status });
+    return await apiCall<StudentUser>('PUT', `/users/students/${id}/status`, { status });
   }
 
   // 删除学生账号
   async deleteStudentUser(id: number): Promise<ApiResponse<{ message: string }>> {
-    return await apiCall('DELETE', `/admin/users/students/${id}`);
+    return await apiCall('DELETE', `/users/students/${id}`);
   }
 
   // 重置学生密码（如果支持）
   async resetStudentPassword(id: number): Promise<ApiResponse<{ message: string; password: string }>> {
-    return await apiCall('PUT', `/admin/users/students/${id}/password`);
+    return await apiCall('PUT', `/users/students/${id}/password`);
   }
 
   // 获取PI用户详情
   async getPIUserById(id: number): Promise<ApiResponse<PIUser>> {
-    return await apiCall<PIUser>('GET', `/admin/users/pis/${id}`);
+    return await apiCall<PIUser>('GET', `/users/pis/${id}`);
   }
 
   // 获取管理员详情
   async getAdminUserById(id: number): Promise<ApiResponse<AdminUser>> {
-    return await apiCall<AdminUser>('GET', `/admin/users/admins/${id}`);
+    return await apiCall<AdminUser>('GET', `/users/admins/${id}`);
   }
 
   // 更新PI用户
   async updatePIUser(id: number, data: UpdateUserRequest): Promise<ApiResponse<PIUser>> {
-    return await apiCall<PIUser>('PUT', `/admin/users/pis/${id}`, data);
+    return await apiCall<PIUser>('PUT', `/users/pis/${id}`, data);
   }
 
   // 更新管理员
   async updateAdminUser(id: number, data: UpdateUserRequest): Promise<ApiResponse<AdminUser>> {
-    return await apiCall<AdminUser>('PUT', `/admin/users/admins/${id}`, data);
+    return await apiCall<AdminUser>('PUT', `/users/admins/${id}`, data);
   }
 
   // 创建管理员
   async createAdminUser(data: CreateAdminRequest): Promise<ApiResponse<AdminUser>> {
-    return await apiCall<AdminUser>('POST', '/admin/users/admins', data);
+    return await apiCall<AdminUser>('POST', '/users/admins', data);
   }
 
   // 激活/停用PI用户
   async togglePIUserStatus(id: number, active: boolean): Promise<ApiResponse<PIUser>> {
-    return await apiCall<PIUser>('PUT', `/admin/users/pis/${id}/status`, { is_active: active });
+    return await apiCall<PIUser>('PUT', `/users/pis/${id}/status`, { is_active: active });
   }
 
   // 激活/停用管理员
   async toggleAdminUserStatus(id: number, active: boolean): Promise<ApiResponse<AdminUser>> {
-    return await apiCall<AdminUser>('PUT', `/admin/users/admins/${id}/status`, { is_active: active });
+    return await apiCall<AdminUser>('PUT', `/users/admins/${id}/status`, { is_active: active });
   }
 
   // 重置管理员密码
   async resetAdminPassword(id: number, newPassword: string): Promise<ApiResponse<{ message: string }>> {
-    return await apiCall('PUT', `/admin/users/admins/${id}/password`, { password: newPassword });
+    return await apiCall('PUT', `/users/admins/${id}/password`, { password: newPassword });
   }
 
   // 获取用户统计
@@ -228,7 +228,7 @@ class UserService {
     recent_pis: PIUser[];
     recent_admins: AdminUser[];
   }>> {
-    return await apiCall('GET', '/admin/users/stats');
+    return await apiCall('GET', '/users/stats');
   }
 
   // 同步LDAP用户（完全同步）
@@ -253,7 +253,7 @@ class UserService {
     };
     message: string;
   }>> {
-    return await apiCall('POST', '/admin/users/sync-ldap');
+    return await apiCall('POST', '/users/sync-ldap');
   }
 
   // 增量同步LDAP用户
@@ -276,7 +276,7 @@ class UserService {
     message: string;
   }>> {
     const params = lastSyncTime ? { lastSyncTime } : undefined;
-    return await apiCall('POST', '/admin/users/sync-ldap-incremental', undefined, params);
+    return await apiCall('POST', '/users/sync-ldap-incremental', undefined, params);
   }
 
   // 获取用户状态选项

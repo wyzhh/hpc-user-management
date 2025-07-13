@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 import config from '../config';
 import { JWTPayload, PIInfo, Admin } from '../types';
 import { PIModel, AdminModel } from '../models';
@@ -37,26 +36,12 @@ export class AuthService {
       let pi = await PIModel.findByUsername(username);
       
       if (!pi) {
-        // 如果数据库中不存在，则创建新记录
-        pi = await PIModel.create({
-          ldap_dn: ldapPIInfo.ldap_dn,
-          username: ldapPIInfo.username,
-          full_name: ldapPIInfo.full_name,
-          email: ldapPIInfo.email,
-          department: ldapPIInfo.department,
-          phone: ldapPIInfo.phone,
-          is_active: true,
-        });
-        console.log(`新PI用户已创建: ${username}`);
+        console.log(`用户 ${username} 在PI表中不存在，但尝试作为PI登录`);
+        return null;
       } else {
-        // 更新PI信息（可能在LDAP中有变化）
-        await PIModel.update(pi.id, {
-          full_name: ldapPIInfo.full_name,
-          email: ldapPIInfo.email,
-          department: ldapPIInfo.department,
-          phone: ldapPIInfo.phone,
-        });
-        console.log(`PI用户信息已更新: ${username}`);
+        // PI记录已存在，更新users表中的信息（如果需要）
+        // 这里我们可以选择性地更新users表，但为简单起见，我们跳过更新
+        console.log(`PI用户登录成功: ${username}`);
       }
 
       // 3. 生成JWT token
@@ -75,82 +60,40 @@ export class AuthService {
     }
   }
 
-  static async authenticateAdmin(username: string, password: string): Promise<{ admin: Admin; token: string } | null> {
+  static async authenticateAdmin(username: string, password: string): Promise<{ admin: Admin; token: string } | { error: string; code: number } | null> {
     try {
-      // 从数据库查找管理员
-      const admin = await AdminModel.findByUsername(username);
-      
-      if (admin) {
-        // 数据库管理员认证
-        if (admin.password_hash) {
-          // 使用密码哈希验证
-          const isPasswordValid = bcrypt.compareSync(password, admin.password_hash);
-          if (!isPasswordValid) {
-            console.log(`管理员密码错误: ${username}`);
-            return null;
-          }
-        } else if (admin.ldap_dn) {
-          // LDAP管理员，使用LDAP认证
-          const ldapAuth = await this.authenticateLDAPAdmin(username, password);
-          if (!ldapAuth) {
-            console.log(`LDAP管理员认证失败: ${username}`);
-            return null;
-          }
-        } else {
-          console.log(`管理员认证配置错误: ${username}`);
-          return null;
-        }
-
-        // 生成JWT token
-        const tokenPayload: Omit<JWTPayload, 'iat' | 'exp'> = {
-          id: admin.id,
-          username: admin.username,
-          role: 'admin',
-        };
-
-        const token = this.generateToken(tokenPayload);
-
-        console.log(`管理员登录成功: ${username}`);
-        return {
-          admin,
-          token,
-        };
-      } else {
-        // 检查是否是配置的LDAP管理员
-        const ldapAdminUsers = process.env.LDAP_ADMIN_USERS;
-        const ldapAdminEnabled = process.env.LDAP_ADMIN_LOGIN_ENABLED === 'true';
-        
-        if (ldapAdminEnabled && ldapAdminUsers) {
-          const adminUsernames = ldapAdminUsers.split(',').map(u => u.trim());
-          
-          if (adminUsernames.includes(username)) {
-            // 尝试LDAP认证
-            const ldapAuth = await this.authenticateLDAPAdmin(username, password);
-            if (ldapAuth) {
-              // 动态创建管理员记录
-              const newAdmin = await this.createAdminFromLDAP(ldapAuth);
-              if (newAdmin) {
-                const tokenPayload: Omit<JWTPayload, 'iat' | 'exp'> = {
-                  id: newAdmin.id,
-                  username: newAdmin.username,
-                  role: 'admin',
-                };
-
-                const token = this.generateToken(tokenPayload);
-
-                console.log(`LDAP管理员登录成功: ${username}`);
-                return {
-                  admin: newAdmin,
-                  token,
-                };
-              }
-            }
-          }
-        }
-
-        console.log(`管理员不存在: ${username}`);
+      // 直接使用LDAP认证
+      const ldapAuth = await ldapService.authenticatePI(username, password);
+      if (!ldapAuth) {
+        console.log(`管理员LDAP认证失败: ${username}`);
         return null;
       }
+
+      // 检查用户是否在管理员表中
+      const admin = await AdminModel.findByUsername(username);
+      if (!admin) {
+        console.log(`用户不是管理员: ${username}`);
+        return { error: '用户不是管理员', code: 403 };
+      }
+      if (!admin.is_active) {
+        console.log(`管理员账户已被禁用: ${username}`);
+        return { error: '管理员账户已被禁用', code: 403 };
+      }
+
+      // 生成JWT token
+      const tokenPayload: Omit<JWTPayload, 'iat' | 'exp'> = {
+        id: admin.id,
+        username: admin.username,
+        role: 'admin',
+      };
+
+      const token = this.generateToken(tokenPayload);
+
+      console.log(`管理员LDAP登录成功: ${username}`);
+      return {
+        admin,
+        token,
+      };
     } catch (error) {
       console.error('管理员认证过程出错:', error);
       return null;
@@ -211,48 +154,4 @@ export class AuthService {
     return authHeader.substring(7); // 移除 "Bearer " 前缀
   }
 
-  private static async authenticateLDAPAdmin(username: string, password: string): Promise<any | null> {
-    try {
-      // 使用LDAP验证管理员身份
-      const ldapUserInfo = await ldapService.authenticatePI(username, password);
-      return ldapUserInfo;
-    } catch (error) {
-      console.error('LDAP管理员认证失败:', error);
-      return null;
-    }
-  }
-
-  private static async createAdminFromLDAP(ldapUserInfo: any): Promise<Admin | null> {
-    try {
-      // 检查是否已存在
-      const existingAdmin = await AdminModel.findByUsername(ldapUserInfo.username);
-      if (existingAdmin) {
-        return existingAdmin;
-      }
-
-      // 创建新的管理员记录
-      const newAdmin = await AdminModel.create({
-        username: ldapUserInfo.username,
-        full_name: ldapUserInfo.full_name,
-        email: ldapUserInfo.email,
-        ldap_dn: ldapUserInfo.ldap_dn,
-        role: 'admin',
-        is_active: true,
-      });
-
-      console.log(`从LDAP创建管理员: ${ldapUserInfo.username}`);
-      return newAdmin;
-    } catch (error) {
-      console.error('创建LDAP管理员失败:', error);
-      return null;
-    }
-  }
-
-  static hashPassword(password: string): string {
-    return bcrypt.hashSync(password, 10);
-  }
-
-  static comparePassword(password: string, hash: string): boolean {
-    return bcrypt.compareSync(password, hash);
-  }
 }

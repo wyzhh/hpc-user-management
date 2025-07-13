@@ -57,6 +57,16 @@ class StudentService {
     return await apiCall('GET', `/students/check-username/${username}`);
   }
 
+  // 获取学生统计信息
+  async getMyStudentStats(): Promise<ApiResponse<{
+    total: number;
+    active: number;
+    pending: number;
+    deleted: number;
+  }>> {
+    return await apiCall('GET', '/students/stats');
+  }
+
   // 获取学生状态选项
   getStatusOptions() {
     return [

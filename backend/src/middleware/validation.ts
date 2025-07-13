@@ -86,21 +86,19 @@ export const validateParams = (schema: Joi.ObjectSchema) => {
 // 登录验证模式
 export const loginSchema = Joi.object({
   username: Joi.string()
-    .alphanum()
+    .pattern(/^[a-zA-Z0-9_-]+$/)
     .min(3)
     .max(50)
     .required()
     .messages({
-      'string.alphanum': '用户名只能包含字母和数字',
+      'string.pattern.base': '用户名只能包含字母、数字、下划线和连字符',
       'string.min': '用户名至少需要3个字符',
       'string.max': '用户名不能超过50个字符',
       'any.required': '用户名是必填项',
     }),
   password: Joi.string()
-    .min(6)
     .required()
     .messages({
-      'string.min': '密码至少需要6个字符',
       'any.required': '密码是必填项',
     }),
 });
@@ -108,12 +106,12 @@ export const loginSchema = Joi.object({
 // 创建学生申请验证模式
 export const createStudentSchema = Joi.object({
   username: Joi.string()
-    .alphanum()
+    .pattern(/^[a-zA-Z0-9_-]+$/)
     .min(3)
     .max(50)
     .required()
     .messages({
-      'string.alphanum': '用户名只能包含字母和数字',
+      'string.pattern.base': '用户名只能包含字母、数字、下划线和连字符',
       'string.min': '用户名至少需要3个字符',
       'string.max': '用户名不能超过50个字符',
       'any.required': '用户名是必填项',
@@ -249,12 +247,12 @@ export const idParamSchema = Joi.object({
 // 用户名参数验证模式
 export const usernameParamSchema = Joi.object({
   username: Joi.string()
-    .alphanum()
+    .pattern(/^[a-zA-Z0-9_-]+$/)
     .min(3)
     .max(50)
     .required()
     .messages({
-      'string.alphanum': '用户名只能包含字母和数字',
+      'string.pattern.base': '用户名只能包含字母、数字、下划线和连字符',
       'string.min': '用户名至少需要3个字符',
       'string.max': '用户名不能超过50个字符',
       'any.required': '用户名是必填项',

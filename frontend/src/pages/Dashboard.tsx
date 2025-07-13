@@ -29,7 +29,7 @@ const Dashboard: React.FC = () => {
       }
 
       // 加载最近的学生
-      if (user?.role === 'pi') {
+      if (user?.user_type === 'pi') {
         const studentsResponse = await studentService.getMyStudents(1, 5);
         if (studentsResponse.success && studentsResponse.data) {
           setRecentStudents(studentsResponse.data.items);
@@ -37,7 +37,7 @@ const Dashboard: React.FC = () => {
       }
 
       // 加载最近的申请
-      const requestsResponse = user?.role === 'pi' 
+      const requestsResponse = user?.user_type === 'pi' 
         ? await requestService.getMyRequests(1, 5)
         : await requestService.getAllRequests(1, 5);
       
@@ -103,7 +103,7 @@ const Dashboard: React.FC = () => {
         </Tag>
       ),
     },
-    ...(user?.role === 'admin' ? [{
+    ...(false ? [{ // 暂时禁用admin列
       title: 'PI用户',
       dataIndex: 'pi_username',
       key: 'pi_username',
@@ -120,7 +120,7 @@ const Dashboard: React.FC = () => {
     <div>
       <h1 style={{ marginBottom: 24 }}>
         欢迎回来，{user?.full_name || user?.username}
-        {user?.role === 'admin' && <Tag color="blue" style={{ marginLeft: 8 }}>管理员</Tag>}
+        {/* 暂时移除admin标签 */}
       </h1>
 
       {/* 统计卡片 */}
@@ -169,7 +169,7 @@ const Dashboard: React.FC = () => {
 
       <Row gutter={[16, 16]}>
         {/* 最近的学生 - 仅PI用户显示 */}
-        {user?.role === 'pi' && (
+        {user?.user_type === 'pi' && (
           <Col xs={24} lg={12}>
             <Card
               title="最近的学生"
@@ -192,13 +192,13 @@ const Dashboard: React.FC = () => {
         )}
 
         {/* 最近的申请 */}
-        <Col xs={24} lg={user?.role === 'pi' ? 12 : 24}>
+        <Col xs={24} lg={user?.user_type === 'pi' ? 12 : 24}>
           <Card
             title="最近的申请"
             extra={
               <Button 
                 type="link" 
-                onClick={() => navigate(user?.role === 'admin' ? '/admin/requests' : '/requests')}
+                onClick={() => navigate('/requests')}
               >
                 查看全部
               </Button>
@@ -217,7 +217,7 @@ const Dashboard: React.FC = () => {
       </Row>
 
       {/* 快速操作 - 仅PI用户显示 */}
-      {user?.role === 'pi' && (
+      {user?.user_type === 'pi' && (
         <Card title="快速操作" style={{ marginTop: 16 }}>
           <Space>
             <Button 

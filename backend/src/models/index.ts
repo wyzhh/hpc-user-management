@@ -3,19 +3,34 @@ import { PIInfo, Student, Request, Admin, AuditLog } from '../types';
 
 export class PIModel {
   static async findByUsername(username: string): Promise<PIInfo | null> {
-    const query = 'SELECT * FROM pis WHERE username = $1 AND is_active = true';
+    const query = `
+      SELECT p.*, u.username, u.full_name, u.email, u.phone, u.ldap_dn
+      FROM pis p
+      JOIN users u ON p.user_id = u.id
+      WHERE u.username = $1 AND p.is_active = true
+    `;
     const result = await pool.query(query, [username]);
     return result.rows[0] || null;
   }
 
   static async findById(id: number): Promise<PIInfo | null> {
-    const query = 'SELECT * FROM pis WHERE id = $1 AND is_active = true';
+    const query = `
+      SELECT p.*, u.username, u.full_name, u.email, u.phone, u.ldap_dn
+      FROM pis p
+      JOIN users u ON p.user_id = u.id
+      WHERE p.id = $1 AND p.is_active = true
+    `;
     const result = await pool.query(query, [id]);
     return result.rows[0] || null;
   }
 
   static async findByLdapDn(ldapDn: string): Promise<PIInfo | null> {
-    const query = 'SELECT * FROM pis WHERE ldap_dn = $1 AND is_active = true';
+    const query = `
+      SELECT p.*, u.username, u.full_name, u.email, u.phone, u.ldap_dn
+      FROM pis p
+      JOIN users u ON p.user_id = u.id
+      WHERE u.ldap_dn = $1 AND p.is_active = true
+    `;
     const result = await pool.query(query, [ldapDn]);
     return result.rows[0] || null;
   }
@@ -42,15 +57,18 @@ export class PIModel {
 
   static async getAll(page = 1, limit = 10, activeOnly = true): Promise<{ pis: PIInfo[], total: number }> {
     const offset = (page - 1) * limit;
-    const whereClause = activeOnly ? 'WHERE is_active = true' : '';
+    const whereClause = activeOnly ? 'WHERE p.is_active = true' : '';
     
-    const countQuery = `SELECT COUNT(*) FROM pis ${whereClause}`;
+    const countQuery = `SELECT COUNT(*) FROM pis p ${whereClause}`;
     const countResult = await pool.query(countQuery);
     const total = parseInt(countResult.rows[0].count, 10);
 
     const query = `
-      SELECT * FROM pis ${whereClause}
-      ORDER BY created_at DESC
+      SELECT p.*, u.username, u.full_name, u.email, u.phone, u.ldap_dn
+      FROM pis p
+      JOIN users u ON p.user_id = u.id
+      ${whereClause}
+      ORDER BY p.created_at DESC
       LIMIT $1 OFFSET $2
     `;
     const result = await pool.query(query, [limit, offset]);
@@ -117,21 +135,24 @@ export class StudentModel {
 
   static async findByPiId(piId: number, page = 1, limit = 10, status?: string): Promise<{ students: Student[], total: number }> {
     const offset = (page - 1) * limit;
-    let whereClause = 'WHERE pi_id = $1';
+    let whereClause = 'WHERE s.pi_id = $1';
     const params: any[] = [piId];
 
     if (status) {
-      whereClause += ' AND status = $2';
+      whereClause += ' AND s.status = $2';
       params.push(status);
     }
 
-    const countQuery = `SELECT COUNT(*) FROM students ${whereClause}`;
+    const countQuery = `SELECT COUNT(*) FROM students s ${whereClause}`;
     const countResult = await pool.query(countQuery, params);
     const total = parseInt(countResult.rows[0].count, 10);
 
     const query = `
-      SELECT * FROM students ${whereClause}
-      ORDER BY created_at DESC
+      SELECT s.*, u.username, u.full_name as chinese_name, u.email, u.phone
+      FROM students s
+      LEFT JOIN users u ON s.user_id = u.id
+      ${whereClause}
+      ORDER BY s.created_at DESC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
     params.push(limit, offset);
@@ -165,9 +186,10 @@ export class StudentModel {
     const total = parseInt(countResult.rows[0].count, 10);
 
     const query = `
-      SELECT s.*, p.username as pi_username, p.full_name as pi_name
+      SELECT s.*, u.username as pi_username, u.full_name as pi_name
       FROM students s
       LEFT JOIN pis p ON s.pi_id = p.id
+      LEFT JOIN users u ON p.user_id = u.id
       ${whereClause}
       ORDER BY s.created_at DESC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
@@ -258,6 +280,32 @@ export class StudentModel {
     const result = await pool.query(query, [username]);
     return result.rows[0] || null;
   }
+
+  static async getStatsByPiId(piId: number): Promise<{
+    total: number;
+    active: number;
+    pending: number;
+    deleted: number;
+  }> {
+    const query = `
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN status = 'active' THEN 1 END) as active,
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
+        COUNT(CASE WHEN status = 'deleted' THEN 1 END) as deleted
+      FROM students 
+      WHERE pi_id = $1
+    `;
+    const result = await pool.query(query, [piId]);
+    const row = result.rows[0];
+    
+    return {
+      total: parseInt(row.total) || 0,
+      active: parseInt(row.active) || 0,
+      pending: parseInt(row.pending) || 0,
+      deleted: parseInt(row.deleted) || 0,
+    };
+  }
 }
 
 export class RequestModel {
@@ -331,9 +379,10 @@ export class RequestModel {
     const total = parseInt(countResult.rows[0].count, 10);
 
     const query = `
-      SELECT r.*, p.username as pi_username, p.full_name as pi_name
+      SELECT r.*, u.username as pi_username, u.full_name as pi_name
       FROM requests r
       JOIN pis p ON r.pi_id = p.id
+      JOIN users u ON p.user_id = u.id
       ${whereClause}
       ORDER BY requested_at DESC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}

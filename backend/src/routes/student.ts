@@ -18,6 +18,9 @@ router.use(authenticateToken, requirePI);
 // 获取我的学生列表
 router.get('/', validateQuery(paginationSchema), StudentController.getMyStudents);
 
+// 获取学生统计信息
+router.get('/stats', StudentController.getMyStudentStats);
+
 // 检查用户名可用性 - 必须在 /:id 之前定义
 router.get('/check-username/:username', validateParams(usernameParamSchema), StudentController.checkUsernameAvailability);
 

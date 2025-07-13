@@ -9,6 +9,8 @@ import {
   SettingOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  CrownOutlined,
+  UsergroupAddOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -53,14 +55,24 @@ const MainLayout: React.FC = () => {
     if (user?.role === 'admin') {
       items.push(
         {
-          key: '/admin/requests',
-          icon: <FileTextOutlined />,
-          label: '申请审核',
+          key: '/admin/pi-management',
+          icon: <CrownOutlined />,
+          label: 'PI管理',
+        },
+        {
+          key: '/admin/student-management',
+          icon: <TeamOutlined />,
+          label: '学生管理',
         },
         {
           key: '/admin/users',
-          icon: <TeamOutlined />,
+          icon: <UsergroupAddOutlined />,
           label: '用户管理',
+        },
+        {
+          key: '/admin/requests',
+          icon: <FileTextOutlined />,
+          label: '申请审核',
         },
         {
           key: '/admin/settings',
@@ -90,7 +102,7 @@ const MainLayout: React.FC = () => {
       label: '退出登录',
       onClick: async () => {
         await logout();
-        navigate('/login');
+        navigate('/login', { replace: true });
       },
     },
   ];
@@ -161,7 +173,7 @@ const MainLayout: React.FC = () => {
           <Space>
             <span>
               欢迎，{user?.full_name || user?.username}
-              {user?.role === 'pi' && user?.department && ` (${user.department})`}
+              {/* 暂时移除角色相关的显示 */}
             </span>
             
             <Dropdown 

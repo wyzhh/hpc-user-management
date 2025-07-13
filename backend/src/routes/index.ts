@@ -3,6 +3,7 @@ import authRoutes from './auth';
 import studentRoutes from './student';
 import requestRoutes from './request';
 import userRoutes from './user';
+import initializationRoutes from './initialization';
 import { requestLogger } from '../middleware/auth';
 
 const router = Router();
@@ -11,10 +12,11 @@ const router = Router();
 router.use(requestLogger);
 
 // API路由
+router.use('/initialization', initializationRoutes);
 router.use('/auth', authRoutes);
 router.use('/students', studentRoutes);
 router.use('/requests', requestRoutes);
-router.use('/admin/users', userRoutes);
+router.use('/users', userRoutes);
 
 // API文档路由
 router.get('/', (req, res) => {

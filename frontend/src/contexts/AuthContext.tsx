@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (authService.isAuthenticated()) {
           const storedUser = authService.getCurrentUserFromStorage();
           if (storedUser) {
-            console.log('初始化认证状态，用户角色:', storedUser.role);
+            console.log('初始化认证状态，用户类型:', storedUser.user_type);
             setUser(storedUser);
             setIsAuthenticated(true);
             
@@ -96,7 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.success && response.data) {
         setUser(response.data.user);
         setIsAuthenticated(true);
-        console.log('登录成功，用户角色:', response.data.user.role);
+        console.log('登录成功，用户类型:', response.data.user.user_type);
         return { success: true, message: '登录成功' };
       } else {
         return { success: false, message: response.message || '登录失败' };

@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRoles?: ('pi' | 'admin')[];
+  requiredRoles?: ('pi' | 'admin' | 'student' | 'unassigned')[];
   fallbackPath?: string;
 }
 
@@ -43,12 +43,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       return <Navigate to="/unauthorized" replace />;
     }
     
-    if (!requiredRoles.includes(user.role)) {
-      console.log(`权限检查失败：用户角色 "${user.role}" 不在要求的角色 [${requiredRoles.join(', ')}] 中`);
-      return <Navigate to="/unauthorized" replace />;
+    // 获取用户角色：管理员用户使用 role 字段，其他用户使用 user_type 字段
+    const userRole = user.role || user.user_type;
+    
+    if (!userRole || !requiredRoles.includes(userRole as any)) {
+      console.log(`权限检查失败：用户角色 "${userRole}" 不在要求的角色 [${requiredRoles.join(', ')}] 中`);
+      // 根据用户角色重定向到合适的页面
+      const redirectPath = userRole === 'pi' ? '/dashboard' : 
+                          userRole === 'admin' ? '/dashboard' : '/login';
+      return <Navigate to={redirectPath} replace />;
     }
     
-    console.log(`权限检查通过：用户角色 "${user.role}" 符合要求 [${requiredRoles.join(', ')}]`);
+    console.log(`权限检查通过：用户角色 "${userRole}" 符合要求 [${requiredRoles.join(', ')}]`);
   }
 
   return <>{children}</>;

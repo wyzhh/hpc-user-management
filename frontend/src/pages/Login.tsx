@@ -20,7 +20,24 @@ const Login: React.FC = () => {
   const location = useLocation();
 
   // 获取登录后的重定向路径
-  const from = (location.state as any)?.from?.pathname || '/dashboard';
+  const getRedirectPath = (userType: 'pi' | 'admin') => {
+    const from = (location.state as any)?.from?.pathname;
+    
+    // 如果有重定向路径，检查用户是否有权限访问
+    if (from && from !== '/login') {
+      // 管理员可以访问所有页面
+      if (userType === 'admin') {
+        return from;
+      }
+      // PI用户只能访问非管理员页面
+      if (userType === 'pi' && !from.startsWith('/admin/')) {
+        return from;
+      }
+    }
+    
+    // 默认重定向
+    return '/dashboard';
+  };
 
   const onFinish = async (values: LoginFormValues) => {
     setLoading(true);
@@ -30,7 +47,8 @@ const Login: React.FC = () => {
       const result = await login(values.username, values.password, values.userType);
       
       if (result.success) {
-        navigate(from, { replace: true });
+        const redirectPath = getRedirectPath(values.userType);
+        navigate(redirectPath, { replace: true });
       } else {
         setError(result.message);
       }
@@ -98,7 +116,7 @@ const Login: React.FC = () => {
               rules={[
                 { required: true, message: '请输入用户名' },
                 { min: 3, message: '用户名至少3个字符' },
-                { pattern: /^[a-zA-Z0-9]+$/, message: '用户名只能包含字母和数字' },
+                { pattern: /^[a-zA-Z0-9_-]+$/, message: '用户名只能包含字母、数字、下划线和连字符' },
               ]}
             >
               <Input
@@ -112,7 +130,6 @@ const Login: React.FC = () => {
               name="password"
               rules={[
                 { required: true, message: '请输入密码' },
-                { min: 6, message: '密码至少6个字符' },
               ]}
             >
               <Input.Password
@@ -136,9 +153,30 @@ const Login: React.FC = () => {
 
           <div style={{ fontSize: '12px', color: '#999' }}>
             <Paragraph type="secondary">
-              测试账号：<br />
-              PI用户: pi001 / changeme123<br />
-              管理员: admin / admin123
+              <details>
+                <summary style={{ cursor: 'pointer', color: '#1890ff' }}>
+                  测试账号 (点击展开)
+                </summary>
+                <div style={{ marginTop: '8px', lineHeight: '1.4' }}>
+                  <strong>管理员账号：</strong><br />
+                  zhang_wei / zhang123 (超级管理员)<br />
+                  li_ming / li123 (普通管理员)<br /><br />
+                  
+                  <strong>普通用户账号：</strong><br />
+                  wang_lei / wang123<br />
+                  chen_hao / chen123<br />
+                  liu_hua / liu123<br />
+                  zhao_qiang / zhao123<br />
+                  sun_min / sun123<br />
+                  zhou_jie / zhou123<br />
+                  wu_yan / wu123<br />
+                  xu_gang / xu123<br />
+                  user_a / usera123<br />
+                  researcher01 / researcher123<br />
+                  john_smith / john123<br />
+                  test123 / test123
+                </div>
+              </details>
             </Paragraph>
           </div>
         </Space>

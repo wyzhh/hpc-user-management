@@ -70,6 +70,15 @@ export class AuthController {
         });
       }
 
+      // 检查是否返回了错误
+      if ('error' in result) {
+        return res.status(result.code).json({
+          success: false,
+          message: result.error,
+          code: result.code,
+        });
+      }
+
       const { admin, token } = result;
 
       // 记录登录日志
@@ -98,7 +107,7 @@ export class AuthController {
           },
         },
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('管理员登录错误:', error);
       res.status(500).json({
         success: false,

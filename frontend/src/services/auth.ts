@@ -92,7 +92,8 @@ class AuthService {
   // 获取用户角色
   getUserRole(): 'pi' | 'admin' | null {
     const user = this.getCurrentUserFromStorage();
-    return user?.role || null;
+    // 新架构中，用户类型不包含admin，暂时返回null
+    return user?.user_type === 'pi' ? 'pi' : null;
   }
 
   // 检查用户权限

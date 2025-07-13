@@ -17,7 +17,7 @@ const RequestManagement: React.FC = () => {
   const [stats, setStats] = useState<RequestStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = false; // 暂时禁用admin功能
 
   // 加载统计数据
   const loadStats = async () => {
