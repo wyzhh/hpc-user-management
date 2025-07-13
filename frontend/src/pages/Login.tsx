@@ -29,7 +29,7 @@ const Login: React.FC = () => {
       if (userType === 'admin') {
         return from;
       }
-      // PI用户只能访问非管理员页面
+      // 课题组长只能访问非管理员页面
       if (userType === 'pi' && !from.startsWith('/admin/')) {
         return from;
       }
@@ -106,7 +106,7 @@ const Login: React.FC = () => {
               rules={[{ required: true, message: '请选择用户类型' }]}
             >
               <Radio.Group buttonStyle="solid">
-                <Radio.Button value="pi">PI用户</Radio.Button>
+                <Radio.Button value="pi">课题组长</Radio.Button>
                 <Radio.Button value="admin">管理员</Radio.Button>
               </Radio.Group>
             </Form.Item>

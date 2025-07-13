@@ -164,7 +164,7 @@ const UserModal: React.FC<UserModalProps> = ({
   };
 
   const getTitle = () => {
-    const userTypeName = userType === 'pi' ? 'PI用户' : userType === 'admin' ? '管理员' : '学生';
+    const userTypeName = userType === 'pi' ? '课题组长' : userType === 'admin' ? '管理员' : '组用户';
     if (mode === 'view') return `查看${userTypeName}`;
     if (mode === 'edit') return `编辑${userTypeName}`;
     if (mode === 'create') return `添加${userTypeName}`;
@@ -225,7 +225,7 @@ const UserModal: React.FC<UserModalProps> = ({
               <>
                 <Descriptions.Item label="部门">{(user as PIUser).department || '-'}</Descriptions.Item>
                 <Descriptions.Item label="手机号">{(user as PIUser).phone || '-'}</Descriptions.Item>
-                <Descriptions.Item label="学生数量">
+                <Descriptions.Item label="组用户数量">
                   <Tag color="green">{(user as PIUser).student_count || 0}</Tag>
                 </Descriptions.Item>
                 <Descriptions.Item label="LDAP DN">{(user as PIUser).ldap_dn}</Descriptions.Item>

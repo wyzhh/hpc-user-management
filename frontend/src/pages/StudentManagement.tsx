@@ -21,7 +21,7 @@ const StudentManagement: React.FC = () => {
   });
   const [statsLoading, setStatsLoading] = useState(false);
 
-  // 加载学生统计数据
+  // 加载组用户统计数据
   const loadStats = async () => {
     setStatsLoading(true);
     try {
@@ -51,14 +51,14 @@ const StudentManagement: React.FC = () => {
     }
   }, [refreshKey]);
 
-  // 打开创建学生表单
+  // 打开创建组用户表单
   const handleCreateStudent = () => {
     setSelectedStudent(null);
     setFormMode('create');
     setFormVisible(true);
   };
 
-  // 打开编辑学生表单
+  // 打开编辑组用户表单
   const handleEditStudent = (student: Student) => {
     setSelectedStudent(student);
     setFormMode('edit');
@@ -69,7 +69,7 @@ const StudentManagement: React.FC = () => {
   const handleFormSuccess = () => {
     setFormVisible(false);
     setSelectedStudent(null);
-    // 触发学生列表刷新
+    // 触发组用户列表刷新
     setRefreshKey(prev => prev + 1);
   };
 
@@ -83,9 +83,9 @@ const StudentManagement: React.FC = () => {
     <div style={{ padding: '24px' }}>
       {/* 页面标题 */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>学生管理</h1>
+        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>组用户管理</h1>
         <p style={{ margin: '8px 0 0 0', color: '#666' }}>
-          管理您的学生账号，包括创建申请、查看状态和删除申请
+          管理您的组用户账号，包括创建申请、查看状态和删除申请
         </p>
       </div>
 
@@ -94,7 +94,7 @@ const StudentManagement: React.FC = () => {
         <Col span={6}>
           <Card loading={statsLoading}>
             <Statistic
-              title="总学生数"
+              title="总组用户数"
               value={stats.total}
               prefix={<UserOutlined />}
               valueStyle={{ color: '#1890ff' }}
@@ -104,7 +104,7 @@ const StudentManagement: React.FC = () => {
         <Col span={6}>
           <Card loading={statsLoading}>
             <Statistic
-              title="活跃学生"
+              title="活跃组用户"
               value={stats.active}
               prefix={<CheckCircleOutlined />}
               valueStyle={{ color: '#52c41a' }}
@@ -140,7 +140,7 @@ const StudentManagement: React.FC = () => {
             tab={
               <Space>
                 <UserOutlined />
-                学生列表
+                组用户列表
               </Space>
             } 
             key="list"
@@ -154,7 +154,7 @@ const StudentManagement: React.FC = () => {
         </Tabs>
       </Card>
 
-      {/* 学生表单弹窗 */}
+      {/* 组用户表单弹窗 */}
       <StudentForm
         visible={formVisible}
         mode={formMode}

@@ -68,7 +68,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         {
           key: '/students',
           icon: <TeamOutlined />,
-          label: '学生管理',
+          label: '组用户管理',
         },
         {
           key: '/requests',

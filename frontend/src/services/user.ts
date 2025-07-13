@@ -62,7 +62,7 @@ export interface UpdateUserRequest {
 }
 
 class UserService {
-  // 获取PI用户列表
+  // 获取课题组长列表
   async getPIUsers(
     page = 1,
     limit = 10,
@@ -177,7 +177,7 @@ class UserService {
     return await apiCall('PUT', `/users/students/${id}/password`);
   }
 
-  // 获取PI用户详情
+  // 获取课题组长详情
   async getPIUserById(id: number): Promise<ApiResponse<PIUser>> {
     return await apiCall<PIUser>('GET', `/users/pis/${id}`);
   }
@@ -187,7 +187,7 @@ class UserService {
     return await apiCall<AdminUser>('GET', `/users/admins/${id}`);
   }
 
-  // 更新PI用户
+  // 更新课题组长
   async updatePIUser(id: number, data: UpdateUserRequest): Promise<ApiResponse<PIUser>> {
     return await apiCall<PIUser>('PUT', `/users/pis/${id}`, data);
   }
@@ -202,7 +202,7 @@ class UserService {
     return await apiCall<AdminUser>('POST', '/users/admins', data);
   }
 
-  // 激活/停用PI用户
+  // 激活/停用课题组长
   async togglePIUserStatus(id: number, active: boolean): Promise<ApiResponse<PIUser>> {
     return await apiCall<PIUser>('PUT', `/users/pis/${id}/status`, { is_active: active });
   }

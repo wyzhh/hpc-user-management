@@ -26,7 +26,7 @@ const StudentList: React.FC<StudentListProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [searchText, setSearchText] = useState('');
 
-  // 加载学生列表
+  // 加载组用户列表
   const loadStudents = async (page = 1, pageSize = 10, status?: string) => {
     setLoading(true);
     try {
@@ -39,10 +39,10 @@ const StudentList: React.FC<StudentListProps> = ({
           total: response.data.total,
         });
       } else {
-        message.error('加载学生列表失败: ' + response.message);
+        message.error('加载组用户列表失败: ' + response.message);
       }
     } catch (error) {
-      message.error('加载学生列表失败');
+      message.error('加载组用户列表失败');
       console.error('Load students error:', error);
     } finally {
       setLoading(false);
@@ -54,12 +54,12 @@ const StudentList: React.FC<StudentListProps> = ({
     loadStudents();
   }, []);
 
-  // 删除学生申请
+  // 删除组用户申请
   const handleDeleteStudent = async (student: Student) => {
     try {
       const response = await studentService.deleteStudentRequest({
         student_id: student.id,
-        reason: '删除学生账号'
+        reason: '删除组用户账号'
       });
       
       if (response.success) {
@@ -86,7 +86,7 @@ const StudentList: React.FC<StudentListProps> = ({
     // 这里可以添加本地搜索逻辑或调用API搜索
   };
 
-  // 过滤学生数据
+  // 过滤组用户数据
   const filteredStudents = students.filter(student => {
     if (!searchText) return true;
     return (
@@ -157,7 +157,7 @@ const StudentList: React.FC<StudentListProps> = ({
           </Button>
           {record.status === 'active' && (
             <Popconfirm
-              title="确定要删除这个学生吗？"
+              title="确定要删除这个组用户吗？"
               description="删除后将提交删除申请给管理员审核"
               onConfirm={() => handleDeleteStudent(record)}
               okText="确定"
@@ -209,11 +209,11 @@ const StudentList: React.FC<StudentListProps> = ({
           icon={<PlusOutlined />}
           onClick={onCreateStudent}
         >
-          添加学生
+          添加组用户
         </Button>
       </div>
 
-      {/* 学生列表表格 */}
+      {/* 组用户列表表格 */}
       <Table
         columns={columns}
         dataSource={filteredStudents}

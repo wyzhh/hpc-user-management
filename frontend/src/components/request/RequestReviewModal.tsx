@@ -96,23 +96,9 @@ const RequestReviewModal: React.FC<RequestReviewModalProps> = ({
     }
   };
 
-  // 获取申请紧急度
-  const getUrgencyInfo = (requestDate: string) => {
-    const date = new Date(requestDate);
-    const now = new Date();
-    const daysDiff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (daysDiff >= 7) {
-      return { level: 'high', text: '紧急', color: 'red' };
-    } else if (daysDiff >= 3) {
-      return { level: 'medium', text: '较急', color: 'orange' };
-    }
-    return { level: 'low', text: '正常', color: 'green' };
-  };
 
   if (!request) return null;
 
-  const urgency = getUrgencyInfo(request.requested_at);
 
   return (
     <Modal
@@ -122,7 +108,6 @@ const RequestReviewModal: React.FC<RequestReviewModalProps> = ({
           <Tag color={requestService.getTypeColor(request.request_type)}>
             {requestService.getTypeText(request.request_type)}
           </Tag>
-          <Tag color={urgency.color}>{urgency.text}</Tag>
         </Space>
       }
       open={visible}
@@ -167,7 +152,7 @@ const RequestReviewModal: React.FC<RequestReviewModalProps> = ({
         <div style={{ marginBottom: 20 }}>
           {/* 申请基本信息 */}
           <Descriptions title="申请信息" column={2} bordered size="small">
-            <Descriptions.Item label="申请ID">{request.id}</Descriptions.Item>
+            <Descriptions.Item label="申请编码">{request.id}</Descriptions.Item>
             <Descriptions.Item label="申请类型">
               <Tag color={requestService.getTypeColor(request.request_type)}>
                 {requestService.getTypeText(request.request_type)}
@@ -179,22 +164,19 @@ const RequestReviewModal: React.FC<RequestReviewModalProps> = ({
               </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="申请时间">{requestService.formatTime(request.requested_at)}</Descriptions.Item>
-            <Descriptions.Item label="PI用户">
+            <Descriptions.Item label="课题组长">
               <Space>
                 <UserOutlined />
                 {request.pi_name} (@{request.pi_username})
               </Space>
             </Descriptions.Item>
-            <Descriptions.Item label="紧急程度">
-              <Tag color={urgency.color}>{urgency.text}</Tag>
-            </Descriptions.Item>
           </Descriptions>
         </div>
 
-        {/* 学生信息 */}
+        {/* 组用户信息 */}
         {request.request_type === 'create' && (
           <div style={{ marginBottom: 20 }}>
-            <h4>学生信息</h4>
+            <h4>组用户信息</h4>
             {formatStudentData(request.student_data)}
           </div>
         )}

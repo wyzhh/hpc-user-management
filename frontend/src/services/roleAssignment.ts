@@ -138,7 +138,7 @@ class RoleAssignmentService {
   getUserTypeOptions() {
     return [
       { label: '未分配', value: 'unassigned' },
-      { label: 'PI用户', value: 'pi' },
+      { label: '课题组长', value: 'pi' },
       { label: '学生', value: 'student' }
     ];
   }
@@ -166,7 +166,7 @@ class RoleAssignmentService {
     if (!userType) return '未知';
     const typeMap: Record<string, string> = {
       unassigned: '未分配',
-      pi: 'PI用户',
+      pi: '课题组长',
       student: '学生'
     };
     return typeMap[userType] || userType;
@@ -241,14 +241,14 @@ class RoleAssignmentService {
     // 基于用户名的建议
     const username = user.username.toLowerCase();
     if (username.includes('prof') || username.includes('teacher')) {
-      suggestions.push('用户名包含教师相关字样，建议分配为PI用户');
+      suggestions.push('用户名包含教师相关字样，建议分配为课题组长');
     } else if (/\d{6,}/.test(username)) {
       suggestions.push('用户名包含长数字序列，可能是学号，建议分配为学生');
     }
     
     // 基于邮箱的建议
     if (user.email.includes('faculty') || user.email.includes('prof')) {
-      suggestions.push('邮箱包含教师相关字样，建议分配为PI用户');
+      suggestions.push('邮箱包含教师相关字样，建议分配为课题组长');
     } else if (user.email.includes('student')) {
       suggestions.push('邮箱包含学生字样，建议分配为学生');
     }

@@ -131,7 +131,7 @@ const UserList: React.FC<UserListProps> = ({
           setSyncResultModalVisible(true);
         } else {
           // 兼容旧格式
-          message.success(`同步完成：新增 ${response.data.new_pis} 个，更新 ${response.data.updated_pis} 个PI用户`);
+          message.success(`同步完成：新增 ${response.data.new_pis} 个，更新 ${response.data.updated_pis} 个课题组长`);
         }
         loadUsers(pagination.current, pagination.pageSize, undefined, searchText);
       } else {
@@ -172,7 +172,7 @@ const UserList: React.FC<UserListProps> = ({
     loadUsers(1, pagination.pageSize, undefined, value);
   };
 
-  // PI用户表格列
+  // 课题组长表格列
   const piColumns = [
     {
       title: 'ID',
@@ -623,7 +623,7 @@ const UserList: React.FC<UserListProps> = ({
         <Space>
           <Search
             placeholder={`搜索${
-              userType === 'pi' ? 'PI用户' : 
+              userType === 'pi' ? '课题组长' : 
               userType === 'admin' ? '管理员' : 
               userType === 'all_users' ? '用户' : '学生'
             }名称、邮箱`}
@@ -749,7 +749,7 @@ const UserList: React.FC<UserListProps> = ({
       >
         {syncResult && (
           <div>
-            <Descriptions title="PI用户同步结果" column={2} bordered size="small" style={{ marginBottom: 16 }}>
+            <Descriptions title="课题组长同步结果" column={2} bordered size="small" style={{ marginBottom: 16 }}>
               <Descriptions.Item label="总数">
                 <Badge count={syncResult.pis.total} style={{ backgroundColor: '#1890ff' }} />
               </Descriptions.Item>

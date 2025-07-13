@@ -249,7 +249,7 @@ const EnhancedDashboard: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card loading={loading}>
             <Statistic
-              title="PI用户"
+              title="课题组长"
               value={userStats?.by_type.pi || 0}
               prefix={<CrownOutlined />}
               valueStyle={{ color: '#722ed1' }}

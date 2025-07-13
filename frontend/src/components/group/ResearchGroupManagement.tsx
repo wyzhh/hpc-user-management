@@ -436,7 +436,7 @@ const ResearchGroupManagement: React.FC = () => {
             {/* 用户列表 */}
             {renderUserList(
               selectedGroup.users.filter(u => u.user_type === 'pi'),
-              'PI用户',
+              '课题组长',
               <CrownOutlined style={{ color: '#722ed1' }} />,
               '#722ed1'
             )}
@@ -522,7 +522,7 @@ const ResearchGroupManagement: React.FC = () => {
             />
 
             {suggestions.suggestedPI.length > 0 && (
-              <Card title="推荐为PI用户" size="small" style={{ marginBottom: 16 }}>
+              <Card title="推荐为课题组长" size="small" style={{ marginBottom: 16 }}>
                 <List
                   size="small"
                   dataSource={suggestions.suggestedPI}

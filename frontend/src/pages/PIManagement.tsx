@@ -190,7 +190,7 @@ const PIManagement: React.FC<PIManagementProps> = () => {
       render: (_, record) => (
         <Space>
           {record.user_type !== 'pi' ? (
-            <Tooltip title="设置为PI用户">
+            <Tooltip title="设置为课题组长">
               <Popconfirm
                 title={`确定要将用户 ${record.username} 设置为PI吗？`}
                 onConfirm={() => handleAssignAsPI(record.id, record.username)}
@@ -237,7 +237,7 @@ const PIManagement: React.FC<PIManagementProps> = () => {
         <TeamOutlined /> PI管理
       </Title>
       <Text type="secondary">
-        管理系统中的PI用户，可以将普通用户设置为PI，或移除PI角色
+        管理系统中的课题组长，可以将普通用户设置为PI，或移除PI角色
       </Text>
 
       {/* 统计信息 */}
@@ -255,7 +255,7 @@ const PIManagement: React.FC<PIManagementProps> = () => {
           <Col span={4}>
             <Card>
               <Statistic
-                title="PI用户"
+                title="课题组长"
                 value={stats.total_pis}
                 prefix={<CrownOutlined />}
                 valueStyle={{ color: '#faad14' }}

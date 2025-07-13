@@ -32,7 +32,7 @@ export interface ResearchGroup {
   updated_at: string;
 }
 
-// PI用户类型（角色表）
+// 课题组长类型（角色表）
 export interface PIUser {
   id: number;
   user_id: number;
@@ -174,7 +174,7 @@ export interface LoginResponse {
   user: User;
 }
 
-// 学生管理相关类型
+// 组用户管理相关类型
 // 用户导入结果
 export interface UserImportResult {
   total_found: number;

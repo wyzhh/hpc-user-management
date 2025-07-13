@@ -110,7 +110,7 @@ const App: React.FC = () => {
                 {/* 仪表板 - 所有角色都可以访问 */}
                 <Route path="dashboard" element={<Dashboard />} />
                 
-                {/* PI用户路由 */}
+                {/* 课题组长路由 */}
                 <Route
                   path="students/*"
                   element={

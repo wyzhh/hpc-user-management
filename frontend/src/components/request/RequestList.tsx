@@ -152,24 +152,11 @@ const RequestList: React.FC<RequestListProps> = ({
     return '-';
   };
 
-  // 获取申请紧急度
-  const getUrgencyBadge = (request: Request) => {
-    const requestDate = new Date(request.requested_at);
-    const now = new Date();
-    const daysDiff = Math.floor((now.getTime() - requestDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (daysDiff >= 7) {
-      return <Badge status="error" text="紧急" />;
-    } else if (daysDiff >= 3) {
-      return <Badge status="warning" text="较急" />;
-    }
-    return <Badge status="success" text="正常" />;
-  };
 
   // 表格列定义
   const columns = [
     {
-      title: '申请ID',
+      title: '申请编码',
       dataIndex: 'id',
       key: 'id',
       width: 80,
@@ -186,7 +173,7 @@ const RequestList: React.FC<RequestListProps> = ({
       ),
     },
     ...(isAdmin ? [{
-      title: 'PI用户',
+      title: '课题组长',
       key: 'pi_info',
       width: 150,
       render: (_: any, record: Request) => (
@@ -197,7 +184,7 @@ const RequestList: React.FC<RequestListProps> = ({
       ),
     }] : []),
     {
-      title: '学生信息',
+      title: '组用户信息',
       key: 'student_info',
       width: 150,
       render: (_: any, record: Request) => getStudentDataDisplay(record),
@@ -212,12 +199,6 @@ const RequestList: React.FC<RequestListProps> = ({
           {requestService.getStatusText(status)}
         </Tag>
       ),
-    },
-    {
-      title: '紧急度',
-      key: 'urgency',
-      width: 80,
-      render: (_: any, record: Request) => getUrgencyBadge(record),
     },
     {
       title: '申请时间',
@@ -331,7 +312,7 @@ const RequestList: React.FC<RequestListProps> = ({
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Space>
           <Search
-            placeholder="搜索PI用户名、姓名或理由"
+            placeholder="搜索课题组长名、姓名或理由"
             allowClear
             style={{ width: 250 }}
             onSearch={handleSearch}

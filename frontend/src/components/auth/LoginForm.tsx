@@ -161,7 +161,7 @@ const LoginForm: React.FC = () => {
             items={[
               {
                 key: 'pi',
-                label: 'PI用户登录',
+                label: '课题组长登录',
                 children: renderLoginForm(),
               },
               {
@@ -180,7 +180,7 @@ const LoginForm: React.FC = () => {
             paddingTop: '16px',
           }}>
             {activeTab === 'pi' 
-              ? '如果您是PI（主要研究者），请使用此选项登录'
+              ? '如果您是课题组长，请使用此选项登录'
               : '如果您是系统管理员，请使用此选项登录'
             }
           </div>

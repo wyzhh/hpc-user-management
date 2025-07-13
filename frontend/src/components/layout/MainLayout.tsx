@@ -42,7 +42,7 @@ const MainLayout: React.FC = () => {
         {
           key: '/students',
           icon: <TeamOutlined />,
-          label: '学生管理',
+          label: '组用户管理',
         },
         {
           key: '/requests',
@@ -62,7 +62,7 @@ const MainLayout: React.FC = () => {
         {
           key: '/admin/student-management',
           icon: <TeamOutlined />,
-          label: '学生管理',
+          label: '组用户管理',
         },
         {
           key: '/admin/users',

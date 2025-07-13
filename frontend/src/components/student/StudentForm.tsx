@@ -100,7 +100,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
 
         const response = await studentService.createStudentRequest(createData);
         if (response.success) {
-          message.success('学生创建申请已提交，请等待管理员审核');
+          message.success('组用户创建申请已提交，请等待管理员审核');
           onSuccess();
         } else {
           message.error('提交申请失败: ' + response.message);
@@ -151,7 +151,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
       { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确' }
     ],
     password: mode === 'create' ? [
-      { required: true, message: '请输入学生密码' },
+      { required: true, message: '请输入组用户密码' },
       { min: 6, message: '密码至少需要6个字符' },
       { max: 50, message: '密码不能超过50个字符' }
     ] : []
@@ -159,7 +159,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
 
   return (
     <Modal
-      title={mode === 'create' ? '添加学生' : '编辑学生'}
+      title={mode === 'create' ? '添加组用户' : '编辑组用户'}
       open={visible}
       onCancel={onCancel}
       footer={null}
@@ -238,11 +238,11 @@ const StudentForm: React.FC<StudentFormProps> = ({
         {mode === 'create' && (
           <Form.Item
             name="password"
-            label="学生密码"
+            label="组用户密码"
             rules={formRules.password}
           >
             <Input.Password
-              placeholder="请输入学生的LDAP密码"
+              placeholder="请输入组用户的LDAP密码"
             />
           </Form.Item>
         )}

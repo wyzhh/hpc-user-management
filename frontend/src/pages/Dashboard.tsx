@@ -104,7 +104,7 @@ const Dashboard: React.FC = () => {
       ),
     },
     ...(false ? [{ // 暂时禁用admin列
-      title: 'PI用户',
+      title: '课题组长',
       dataIndex: 'pi_username',
       key: 'pi_username',
     }] : []),
@@ -168,7 +168,7 @@ const Dashboard: React.FC = () => {
       </Row>
 
       <Row gutter={[16, 16]}>
-        {/* 最近的学生 - 仅PI用户显示 */}
+        {/* 最近的学生 - 仅课题组长显示 */}
         {user?.user_type === 'pi' && (
           <Col xs={24} lg={12}>
             <Card
@@ -216,7 +216,7 @@ const Dashboard: React.FC = () => {
         </Col>
       </Row>
 
-      {/* 快速操作 - 仅PI用户显示 */}
+      {/* 快速操作 - 仅课题组长显示 */}
       {user?.user_type === 'pi' && (
         <Card title="快速操作" style={{ marginTop: 16 }}>
           <Space>

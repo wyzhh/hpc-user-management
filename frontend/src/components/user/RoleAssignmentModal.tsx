@@ -215,7 +215,7 @@ const RoleAssignmentModal: React.FC<RoleAssignmentModalProps> = ({
           >
             <Card.Meta
               avatar={<CrownOutlined style={{ fontSize: 24, color: '#1890ff' }} />}
-              title="PI用户"
+              title="课题组长"
               description="主要研究者，可以管理学生和研究项目"
             />
           </Card>
