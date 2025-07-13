@@ -13,34 +13,32 @@ export class SafeSchedulerService {
   static startSafeTasks() {
     console.log('🛡️ 启动安全同步任务...');
 
-    // 每5分钟执行安全同步
+    // 每5分钟执行安全同步（包含所有必要操作）
     this.scheduleSafeSync();
-    
-    // 每天凌晨2点执行完整同步（包含清理操作）
-    this.scheduleFullCleanupSync();
 
     console.log('✅ 安全同步任务已启动');
-    console.log('   🛡️ 安全同步: 每5分钟（只同步LDAP权威字段）');
-    console.log('   🧹 完整清理: 每天凌晨2点（包含用户清理操作）');
+    console.log('   🛡️ 安全同步: 每5分钟（包含新增、更新、清理等所有操作）');
   }
 
   /**
    * 调度安全同步任务 - 每5分钟
    */
   static scheduleSafeSync() {
-    // 每5分钟执行安全同步
+    // 每5分钟执行完整的安全同步（包含所有必要操作）
     const task = cron.schedule('*/5 * * * *', async () => {
       try {
-        console.log('🛡️ 开始执行5分钟安全同步任务...');
+        console.log('🔄 开始执行安全同步任务...');
         const syncResult = await SafeSyncService.performSafeSync();
 
-        console.log('✅ 5分钟安全同步任务执行完成:', {
+        console.log('✅ 安全同步任务执行完成:', {
+          total: syncResult.users.total,
           new_users: syncResult.users.new_users,
           updated_users: syncResult.users.updated_users,
-          protected_fields: syncResult.users.protected_fields
+          deleted_users: syncResult.users.deleted_users,
+          errors: syncResult.errors.length
         });
       } catch (error) {
-        console.error('❌ 5分钟安全同步任务执行失败:', error);
+        console.error('❌ 安全同步任务执行失败:', error);
       }
     }, {
       timezone: 'Asia/Shanghai'
@@ -48,30 +46,7 @@ export class SafeSchedulerService {
 
     this.tasks.set('safeSync', task);
     task.start();
-    console.log('🛡️ 安全同步定时任务已调度: 每5分钟执行');
-  }
-
-  /**
-   * 调度完整清理同步任务 - 每天凌晨2点
-   */
-  static scheduleFullCleanupSync() {
-    // 每天凌晨2点执行完整同步（包含用户清理）
-    const task = cron.schedule('0 2 * * *', async () => {
-      try {
-        console.log('🧹 开始执行每日完整清理同步任务...');
-        const syncResult = await SafeSyncService.performSafeSync();
-
-        console.log('✅ 每日完整清理同步任务执行完成:', syncResult);
-      } catch (error) {
-        console.error('❌ 每日完整清理同步任务执行失败:', error);
-      }
-    }, {
-      timezone: 'Asia/Shanghai'
-    });
-
-    this.tasks.set('fullCleanupSync', task);
-    task.start();
-    console.log('🧹 完整清理同步定时任务已调度: 每天凌晨2点执行');
+    console.log('🔄 安全同步定时任务已调度: 每5分钟执行（包含所有同步操作）');
   }
 
   /**

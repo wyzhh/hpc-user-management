@@ -9,7 +9,7 @@ export interface SafeSyncResult {
     total: number;
     new_users: number;
     updated_users: number;
-    deactivated_users: number;
+    deleted_users: number;
     protected_fields: number;
   };
   errors: string[];
@@ -51,7 +51,7 @@ export class SafeSyncService {
         total: 0,
         new_users: 0, 
         updated_users: 0,
-        deactivated_users: 0,
+        deleted_users: 0,
         protected_fields: 0
       },
       errors: []
@@ -117,11 +117,11 @@ export class SafeSyncService {
         }
       }
 
-      // 4. 处理不在LDAP中的用户（标记为不活跃）
-      const deactivatedCount = await this.deactivateUsersNotInLDAP(processedUsernames);
-      result.users.deactivated_users = deactivatedCount;
+      // 4. 处理不在LDAP中的用户（删除）
+      const deletedCount = await this.deleteUsersNotInLDAP(processedUsernames);
+      result.users.deleted_users = deletedCount;
 
-      console.log(`✅ 安全同步完成: 新增${result.users.new_users}个, 更新${result.users.updated_users}个, 停用${result.users.deactivated_users}个`);
+      console.log(`✅ 安全同步完成: 总用户${result.users.total}个, 新增${result.users.new_users}个, 更新${result.users.updated_users}个, 删除${result.users.deleted_users}个`);
       
       // 5. 记录审计日志
       await this.logSyncAudit(result);
@@ -207,31 +207,61 @@ export class SafeSyncService {
   }
 
   /**
-   * 停用不在LDAP中的用户
+   * 删除不在LDAP中的用户
    */
-  private static async deactivateUsersNotInLDAP(activeUsernames: Set<string>): Promise<number> {
+  private static async deleteUsersNotInLDAP(activeUsernames: Set<string>): Promise<number> {
     if (activeUsernames.size === 0) {
       return 0;
     }
 
     const placeholders = Array.from(activeUsernames).map((_, index) => `$${index + 1}`).join(', ');
-    const deactivateQuery = `
-      UPDATE users 
-      SET is_active = false, 
-          is_deleted_from_ldap = true,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE username NOT IN (${placeholders}) 
-        AND is_active = true 
-        AND is_deleted_from_ldap = false
-    `;
-
-    const result = await pool.query(deactivateQuery, Array.from(activeUsernames));
     
-    if (result.rowCount > 0) {
-      console.log(`⚠️ 停用不在LDAP中的用户: ${result.rowCount}个`);
+    // 首先查找要删除的用户
+    const findQuery = `
+      SELECT id, username FROM users 
+      WHERE username NOT IN (${placeholders}) 
+        AND is_active = true
+    `;
+    const usersToDelete = await pool.query(findQuery, Array.from(activeUsernames));
+    
+    if (usersToDelete.rows.length === 0) {
+      return 0;
+    }
+
+    let deletedCount = 0;
+    
+    // 逐个删除用户（包括级联删除相关数据）
+    for (const user of usersToDelete.rows) {
+      try {
+        await pool.query('BEGIN');
+        
+        // 删除学生记录（如果存在）
+        await pool.query('DELETE FROM students WHERE user_id = $1', [user.id]);
+        
+        // 删除PI记录（如果存在）
+        await pool.query('DELETE FROM pis WHERE user_id = $1', [user.id]);
+        
+        // 删除用户记录
+        const deleteResult = await pool.query('DELETE FROM users WHERE id = $1', [user.id]);
+        
+        await pool.query('COMMIT');
+        
+        if (deleteResult.rowCount > 0) {
+          deletedCount++;
+          console.log(`🗑️ 删除用户: ${user.username}`);
+        }
+        
+      } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error(`❌ 删除用户 ${user.username} 失败:`, error.message);
+      }
     }
     
-    return result.rowCount;
+    if (deletedCount > 0) {
+      console.log(`🗑️ 删除不在LDAP中的用户: ${deletedCount}个`);
+    }
+    
+    return deletedCount;
   }
 
   /**
@@ -295,7 +325,7 @@ export class SafeSyncService {
           COUNT(*) as total_users,
           COUNT(CASE WHEN is_active = true THEN 1 END) as active_users,
           COUNT(CASE WHEN user_type != 'unassigned' THEN 1 END) as assigned_users,
-          COUNT(CASE WHEN is_deleted_from_ldap = true THEN 1 END) as deleted_from_ldap,
+          COUNT(CASE WHEN is_active = false THEN 1 END) as inactive_users,
           MAX(last_sync_at) as last_sync_time
         FROM users
       `;
