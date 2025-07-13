@@ -23,10 +23,10 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
   useEffect(() => {
     if (visible && user) {
       form.setFieldsValue({
+        username: user.username,
         full_name: user.full_name,
         email: user.email,
-        phone: user.phone,
-        is_active: user.is_active
+        phone: user.phone
       });
     }
   }, [visible, user, form]);
@@ -86,7 +86,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
           label="用户名"
           name="username"
         >
-          <Input disabled value={user?.username} />
+          <Input disabled />
         </Form.Item>
 
         <Form.Item
@@ -119,13 +119,6 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
           ]}
         >
           <Input placeholder="请输入电话号码" />
-        </Form.Item>
-
-        <Form.Item
-          label="用户类型"
-          name="user_type"
-        >
-          <Input disabled value={user?.user_type} />
         </Form.Item>
       </Form>
     </Modal>

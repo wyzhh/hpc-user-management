@@ -116,7 +116,7 @@ class RoleAssignmentService {
 
   // 更新用户基础信息
   async updateUser(userId: number, data: Partial<User>): Promise<ApiResponse<User>> {
-    return await apiCall('PUT', `/admin/users/${userId}`, data);
+    return await apiCall('PUT', `/users/${userId}`, data);
   }
 
   // 软删除用户
