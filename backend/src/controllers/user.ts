@@ -1631,4 +1631,77 @@ export class UserController {
       });
     }
   }
+
+  // 删除用户 - 真正从LDAP删除
+  static async deleteUser(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      // 验证用户是否存在
+      const user = await UserModel.findById(parseInt(id));
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: '用户不存在',
+          code: 404
+        });
+      }
+
+      // 检查用户是否有LDAP DN
+      if (!user.ldap_dn) {
+        return res.status(400).json({
+          success: false,
+          message: '该用户没有LDAP DN，无法从LDAP删除',
+          code: 400
+        });
+      }
+
+      // 从LDAP删除用户
+      try {
+        await ldapService.deleteUser(user.ldap_dn);
+      } catch (ldapError) {
+        console.error('从LDAP删除用户失败:', ldapError);
+        return res.status(500).json({
+          success: false,
+          message: '从LDAP删除用户失败: ' + (ldapError instanceof Error ? ldapError.message : 'Unknown error'),
+          code: 500
+        });
+      }
+
+      // 从数据库删除用户记录
+      const deleted = await UserModel.delete(parseInt(id));
+      if (!deleted) {
+        return res.status(500).json({
+          success: false,
+          message: '从数据库删除用户失败',
+          code: 500
+        });
+      }
+
+      // 记录审计日志
+      await AuditService.logAction(
+        'delete_user_from_ldap',
+        'admin',
+        req.user!.id,
+        { 
+          user_id: parseInt(id), 
+          username: user.username,
+          ldap_dn: user.ldap_dn,
+          operation: 'permanent_delete'
+        }
+      );
+
+      res.json({
+        success: true,
+        message: '用户已从LDAP和数据库中删除'
+      });
+    } catch (error) {
+      console.error('删除用户失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '删除用户失败',
+        code: 500
+      });
+    }
+  }
 }

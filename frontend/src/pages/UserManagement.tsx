@@ -6,6 +6,7 @@ import UserModal from '../components/user/UserModal';
 import UserEditModal from '../components/user/UserEditModal';
 import { PIUser, AdminUser, StudentUser, userService } from '../services/user';
 import { User } from '../types';
+import { roleAssignmentService } from '../services/roleAssignment';
 
 
 interface UserStats {
@@ -132,6 +133,26 @@ const UserManagement: React.FC = () => {
     loadStats();
   };
 
+  // 删除用户 - 从LDAP和数据库中永久删除
+  const handleDeleteUserFromLDAP = async (user: PIUser | AdminUser | StudentUser) => {
+    try {
+      const response = await roleAssignmentService.deleteUser(user.id);
+      
+      if (response.success) {
+        message.success('用户已从LDAP和数据库中删除');
+        // 触发列表刷新
+        setRefreshKey(prev => prev + 1);
+        // 重新加载统计数据
+        loadStats();
+      } else {
+        message.error('删除用户失败: ' + response.message);
+      }
+    } catch (error) {
+      message.error('删除用户失败');
+      console.error('Delete user error:', error);
+    }
+  };
+
   // 关闭模态框
   const handleCloseModal = () => {
     setModalVisible(false);
@@ -194,6 +215,7 @@ const UserManagement: React.FC = () => {
           userType="all_users"
           onViewUser={(user) => handleViewUser(user, 'pi')}
           onEditUser={(user) => handleEditUser(user, 'pi')}
+          onDeleteUserFromLDAP={handleDeleteUserFromLDAP}
         />
       </Card>
 

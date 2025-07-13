@@ -613,6 +613,33 @@ export class LDAPService {
     }
   }
 
+  // 删除用户
+  async deleteUser(ldapDn: string): Promise<void> {
+    const client = await this.createClient();
+    
+    try {
+      await this.bindClient(client);
+      
+      // 执行删除操作
+      await new Promise<void>((resolve, reject) => {
+        client.del(ldapDn, (err) => {
+          if (err) {
+            reject(new Error(`删除LDAP用户失败: ${err.message}`));
+          } else {
+            resolve();
+          }
+        });
+      });
+      
+      console.log(`用户 ${ldapDn} 已从LDAP删除`);
+    } catch (error) {
+      console.error('删除LDAP用户失败:', error);
+      throw error;
+    } finally {
+      await this.unbindClient(client);
+    }
+  }
+
 }
 
 export const ldapService = new LDAPService();

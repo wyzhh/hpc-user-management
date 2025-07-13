@@ -119,6 +119,11 @@ class RoleAssignmentService {
     return await apiCall('PUT', `/users/${userId}`, data);
   }
 
+  // 删除用户 - 从LDAP和数据库中永久删除
+  async deleteUser(userId: number): Promise<ApiResponse<boolean>> {
+    return await apiCall('DELETE', `/users/${userId}`);
+  }
+
   // 软删除用户
   async softDeleteUser(userId: number): Promise<ApiResponse<boolean>> {
     return await apiCall('PUT', `/admin/users/${userId}/soft-delete`);

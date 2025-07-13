@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Tag, Space, Button, message, Switch, Input, Select, Card, Badge, Tooltip, Popconfirm, Modal, Descriptions } from 'antd';
-import { EditOutlined, PlusOutlined, SyncOutlined, KeyOutlined, EyeOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { EditOutlined, PlusOutlined, SyncOutlined, KeyOutlined, EyeOutlined, ThunderboltOutlined, DeleteOutlined } from '@ant-design/icons';
 import { PIUser, AdminUser, StudentUser, userService } from '../../services/user';
 
 const { Search } = Input;
@@ -13,6 +13,7 @@ interface UserListProps {
   onViewUser?: (user: PIUser | AdminUser | StudentUser) => void;
   onResetPassword?: (user: AdminUser) => void;
   onDeleteUser?: (user: StudentUser) => void;
+  onDeleteUserFromLDAP?: (user: PIUser | AdminUser | StudentUser) => void;
 }
 
 const UserList: React.FC<UserListProps> = ({
@@ -21,7 +22,8 @@ const UserList: React.FC<UserListProps> = ({
   onEditUser,
   onViewUser,
   onResetPassword,
-  onDeleteUser
+  onDeleteUser,
+  onDeleteUserFromLDAP
 }) => {
   const [users, setUsers] = useState<(PIUser | AdminUser | StudentUser)[]>([]);
   const [loading, setLoading] = useState(false);
@@ -447,7 +449,7 @@ const UserList: React.FC<UserListProps> = ({
     {
       title: '操作',
       key: 'actions',
-      width: 150,
+      width: 220,
       render: (_: any, record: any) => (
         <Space size="small">
           <Button
@@ -466,6 +468,23 @@ const UserList: React.FC<UserListProps> = ({
           >
             编辑
           </Button>
+          <Popconfirm
+            title="删除用户"
+            description="确定要从LDAP和数据库中永久删除此用户吗？此操作不可恢复！"
+            onConfirm={() => onDeleteUserFromLDAP?.(record)}
+            okText="确定删除"
+            cancelText="取消"
+            okType="danger"
+          >
+            <Button
+              type="link"
+              size="small"
+              icon={<DeleteOutlined />}
+              danger
+            >
+              删除
+            </Button>
+          </Popconfirm>
         </Space>
       ),
     },
