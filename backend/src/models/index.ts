@@ -103,6 +103,122 @@ export class PIModel {
     return result.rows[0];
   }
 
+  // 智能更新：仅更新LDAP来源的字段，保留本地修改的字段
+  static async smartUpdate(username: string, ldapData: any, localSourceFields: string[] = []): Promise<any | null> {
+    try {
+      // 首先通过username获取user_id
+      const userQuery = 'SELECT id FROM users WHERE username = $1';
+      const userResult = await pool.query(userQuery, [username]);
+      if (userResult.rows.length === 0) {
+        return null;
+      }
+      const userId = userResult.rows[0].id;
+
+      // 分别处理users表和pis表的字段更新
+      const userFields = ['full_name', 'email', 'phone', 'ldap_dn'];
+      const piFields = ['department', 'office_location', 'research_area'];
+      
+      const userUpdates: string[] = [];
+      const userValues: any[] = [];
+      const piUpdates: string[] = [];
+      const piValues: any[] = [];
+
+      // 处理users表字段
+      for (const field of userFields) {
+        if (ldapData[field] !== undefined && !localSourceFields.includes(field)) {
+          userUpdates.push(`${field} = $${userValues.length + 2}`);
+          userValues.push(ldapData[field]);
+        }
+      }
+
+      // 处理pis表字段
+      for (const field of piFields) {
+        if (ldapData[field] !== undefined && !localSourceFields.includes(field)) {
+          piUpdates.push(`${field} = $${piValues.length + 2}`);
+          piValues.push(ldapData[field]);
+        }
+      }
+
+      // 更新users表
+      if (userUpdates.length > 0) {
+        const userUpdateQuery = `
+          UPDATE users 
+          SET ${userUpdates.join(', ')}, updated_at = CURRENT_TIMESTAMP 
+          WHERE id = $1
+        `;
+        await pool.query(userUpdateQuery, [userId, ...userValues]);
+      }
+
+      // 更新pis表
+      if (piUpdates.length > 0) {
+        const piUpdateQuery = `
+          UPDATE pis 
+          SET ${piUpdates.join(', ')}, updated_at = CURRENT_TIMESTAMP 
+          WHERE user_id = $1 AND is_active = true
+        `;
+        await pool.query(piUpdateQuery, [userId, ...piValues]);
+      }
+
+      // 返回更新后的PI信息
+      const resultQuery = `
+        SELECT p.*, u.username, u.full_name, u.email, u.phone, u.ldap_dn
+        FROM pis p
+        JOIN users u ON p.user_id = u.id
+        WHERE u.username = $1 AND p.is_active = true
+      `;
+      const result = await pool.query(resultQuery, [username]);
+      return result.rows[0] || null;
+
+    } catch (error) {
+      console.error('智能更新PI信息失败:', error);
+      return null;
+    }
+  }
+
+  // 获取本地修改过的字段
+  static async getLocallyModifiedFields(username: string): Promise<string[]> {
+    const query = `
+      SELECT p.*, u.username, u.full_name, u.email, u.phone
+      FROM pis p
+      JOIN users u ON p.user_id = u.id
+      WHERE u.username = $1 AND p.is_active = true
+    `;
+    const result = await pool.query(query, [username]);
+    const pi = result.rows[0];
+    
+    if (!pi) return [];
+    
+    const localFields: string[] = [];
+    
+    // 检查users表中的字段
+    if (pi.full_name && pi.full_name.trim() !== '') {
+      localFields.push('full_name');
+    }
+    
+    if (pi.email && pi.email.trim() !== '' && !pi.email.includes('@ldap.')) {
+      localFields.push('email');
+    }
+    
+    if (pi.phone && pi.phone.trim() !== '') {
+      localFields.push('phone');
+    }
+    
+    // 检查pis表中的字段
+    if (pi.department && pi.department.trim() !== '') {
+      localFields.push('department');
+    }
+    
+    if (pi.office_location && pi.office_location.trim() !== '') {
+      localFields.push('office_location');
+    }
+    
+    if (pi.research_area && pi.research_area.trim() !== '') {
+      localFields.push('research_area');
+    }
+    
+    return localFields;
+  }
+
   static async markInactiveByLdapDns(excludeLdapDns: string[]): Promise<number> {
     if (excludeLdapDns.length === 0) {
       // 如果没有排除的DN，标记所有用户为不活跃
@@ -262,6 +378,116 @@ export class StudentModel {
     const values = [data.username, data.chinese_name, data.email, data.phone, data.pi_id, data.ldap_dn, data.status];
     const result = await pool.query(query, values);
     return result.rows[0];
+  }
+
+  // 智能更新：仅更新LDAP来源的字段，保留本地修改的字段
+  static async smartUpdate(username: string, ldapData: any, localSourceFields: string[] = []): Promise<any | null> {
+    try {
+      // 首先通过username获取user_id
+      const userQuery = 'SELECT id FROM users WHERE username = $1';
+      const userResult = await pool.query(userQuery, [username]);
+      if (userResult.rows.length === 0) {
+        return null;
+      }
+      const userId = userResult.rows[0].id;
+
+      // 分别处理users表和students表的字段更新
+      const userFields = ['full_name', 'email', 'phone', 'ldap_dn'];
+      const studentFields = ['pi_id', 'status', 'major'];
+      
+      const userUpdates: string[] = [];
+      const userValues: any[] = [];
+      const studentUpdates: string[] = [];
+      const studentValues: any[] = [];
+
+      // 处理users表字段
+      for (const field of userFields) {
+        if (ldapData[field] !== undefined && !localSourceFields.includes(field)) {
+          userUpdates.push(`${field} = $${userValues.length + 2}`);
+          userValues.push(ldapData[field]);
+        }
+      }
+
+      // 处理students表字段
+      for (const field of studentFields) {
+        if (ldapData[field] !== undefined && !localSourceFields.includes(field)) {
+          studentUpdates.push(`${field} = $${studentValues.length + 2}`);
+          studentValues.push(ldapData[field]);
+        }
+      }
+
+      // 更新users表
+      if (userUpdates.length > 0) {
+        const userUpdateQuery = `
+          UPDATE users 
+          SET ${userUpdates.join(', ')}, updated_at = CURRENT_TIMESTAMP 
+          WHERE id = $1
+        `;
+        await pool.query(userUpdateQuery, [userId, ...userValues]);
+      }
+
+      // 更新students表
+      if (studentUpdates.length > 0) {
+        const studentUpdateQuery = `
+          UPDATE students 
+          SET ${studentUpdates.join(', ')}, updated_at = CURRENT_TIMESTAMP 
+          WHERE user_id = $1
+        `;
+        await pool.query(studentUpdateQuery, [userId, ...studentValues]);
+      }
+
+      // 返回更新后的学生信息
+      const resultQuery = `
+        SELECT s.*, u.username, u.full_name, u.email, u.phone, u.ldap_dn
+        FROM students s
+        JOIN users u ON s.user_id = u.id
+        WHERE u.username = $1
+      `;
+      const result = await pool.query(resultQuery, [username]);
+      return result.rows[0] || null;
+
+    } catch (error) {
+      console.error('智能更新学生信息失败:', error);
+      return null;
+    }
+  }
+
+  // 获取本地修改过的字段（根据last_modified_fields或其他标记）
+  static async getLocallyModifiedFields(username: string): Promise<string[]> {
+    // 通过JOIN查询获取学生信息
+    const query = `
+      SELECT s.*, u.username, u.full_name, u.email, u.phone
+      FROM students s
+      JOIN users u ON s.user_id = u.id
+      WHERE u.username = $1
+    `;
+    const result = await pool.query(query, [username]);
+    const student = result.rows[0];
+    
+    if (!student) return [];
+    
+    const localFields: string[] = [];
+    
+    // 检查users表中的字段（通过JOIN获取）
+    if (student.full_name && student.full_name.trim() !== '') {
+      localFields.push('full_name');
+    }
+    
+    if (student.email && student.email.trim() !== '' && !student.email.includes('@ldap.')) {
+      // 如果邮箱不为空且不是LDAP默认格式，认为是本地修改
+      localFields.push('email');
+    }
+    
+    if (student.phone && student.phone.trim() !== '') {
+      localFields.push('phone');
+    }
+    
+    // 检查students表中的字段
+    if (student.major && student.major.trim() !== '') {
+      localFields.push('major');
+    }
+    
+    return localFields;
   }
 
   static async markDeletedByLdapDns(excludeLdapDns: string[]): Promise<number> {
@@ -474,7 +700,7 @@ export class AuditLogModel {
   static async getByRequestId(requestId: number): Promise<AuditLog[]> {
     const query = `
       SELECT * FROM audit_logs 
-      WHERE request_id = $1 
+      WHERE table_name = 'requests' AND record_id = $1 
       ORDER BY created_at ASC
     `;
     const result = await pool.query(query, [requestId]);

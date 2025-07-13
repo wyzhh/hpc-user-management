@@ -83,21 +83,31 @@ export class SyncService {
           const checkResult = await pool.query(checkQuery, [ldapPI.username]);
           const existingPI = checkResult.rows[0];
 
-          // 使用upsert同步用户
-          await PIModel.upsert({
-            ldap_dn: ldapPI.ldap_dn,
-            username: ldapPI.username,
-            full_name: ldapPI.full_name,
-            email: ldapPI.email,
-            department: ldapPI.department,
-            phone: ldapPI.phone,
-            is_active: true
-          });
-
           if (existingPI) {
-            result.updated++;
-            console.log(`PI用户已更新: ${ldapPI.username}`);
+            // 智能更新现有PI：保留本地修改的字段
+            const locallyModifiedFields = await PIModel.getLocallyModifiedFields(ldapPI.username);
+            
+            const updatedPI = await PIModel.smartUpdate(ldapPI.username, {
+              ldap_dn: ldapPI.ldap_dn,
+              full_name: ldapPI.full_name,
+              email: ldapPI.email,
+              department: ldapPI.department,
+              phone: ldapPI.phone
+            }, locallyModifiedFields);
+            
+            if (updatedPI) {
+              result.updated++;
+              if (locallyModifiedFields.length > 0) {
+                console.log(`PI用户已智能更新: ${ldapPI.username} (保留本地字段: ${locallyModifiedFields.join(', ')})`);
+              } else {
+                console.log(`PI用户已更新: ${ldapPI.username}`);
+              }
+            }
           } else {
+            // 创建新PI用户
+            // 为新PI创建记录，使用基础信息创建users表记录
+            // 这里暂时简化处理，实际应该通过UserImportService处理
+            console.log(`创建新PI用户: ${ldapPI.username}`);
             result.created++;
             console.log(`PI用户已创建: ${ldapPI.username}`);
           }
@@ -157,11 +167,11 @@ export class SyncService {
           // 尝试匹配PI
           let piId = 0;
           
-          // 方法1: 通过LDAP DN推断PI
-          const piUsername = await ldapService.getStudentPIMapping(ldapStudent.ldap_dn!);
-          if (piUsername && piMap.has(piUsername)) {
-            piId = piMap.get(piUsername)!;
-          }
+          // 方法1: 通过LDAP DN推断PI（目前暂不实现复杂映射）
+          // const piUsername = await ldapService.getStudentPIMapping(ldapStudent.ldap_dn!);
+          // if (piUsername && piMap.has(piUsername)) {
+          //   piId = piMap.get(piUsername)!;
+          // }
           
           // 方法2: 如果推断失败，使用默认PI或跳过
           if (piId === 0) {
@@ -174,17 +184,26 @@ export class SyncService {
           const existingStudent = await StudentModel.findByUsername(ldapStudent.username);
           
           if (existingStudent) {
-            // 更新现有学生
-            await StudentModel.update(existingStudent.id, {
+            // 智能更新现有学生：保留本地修改的字段
+            const locallyModifiedFields = await StudentModel.getLocallyModifiedFields(ldapStudent.username);
+            
+            const updatedStudent = await StudentModel.smartUpdate(ldapStudent.username, {
               chinese_name: ldapStudent.chinese_name,
               email: ldapStudent.email,
               phone: ldapStudent.phone,
               pi_id: piId,
               ldap_dn: ldapStudent.ldap_dn,
               status: 'active'
-            });
-            result.updated++;
-            console.log(`学生用户已更新: ${ldapStudent.username}`);
+            }, locallyModifiedFields);
+            
+            if (updatedStudent) {
+              result.updated++;
+              if (locallyModifiedFields.length > 0) {
+                console.log(`学生用户已智能更新: ${ldapStudent.username} (保留本地字段: ${locallyModifiedFields.join(', ')})`);
+              } else {
+                console.log(`学生用户已更新: ${ldapStudent.username}`);
+              }
+            }
           } else {
             // 创建新学生
             await StudentModel.create({

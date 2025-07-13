@@ -4,6 +4,7 @@ import studentRoutes from './student';
 import requestRoutes from './request';
 import userRoutes from './user';
 import initializationRoutes from './initialization';
+import syncRoutes from './sync';
 import { requestLogger } from '../middleware/auth';
 
 const router = Router();
@@ -17,6 +18,7 @@ router.use('/auth', authRoutes);
 router.use('/students', studentRoutes);
 router.use('/requests', requestRoutes);
 router.use('/users', userRoutes);
+router.use('/sync', syncRoutes);
 
 // API文档路由
 router.get('/', (req, res) => {

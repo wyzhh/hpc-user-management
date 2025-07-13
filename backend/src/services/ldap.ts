@@ -613,7 +613,192 @@ export class LDAPService {
     }
   }
 
-  // 删除用户
+  // 获取下一个可用的UID
+  async getNextAvailableUID(): Promise<number> {
+    const ldapConfig = await this.ensureConfig();
+    const client = await this.createClient();
+    
+    try {
+      await this.bindClient(client);
+      
+      // 搜索所有具有posixAccount的用户，获取最大的uidNumber
+      const searchFilter = '(objectClass=posixAccount)';
+      const users = await this.searchUsers(client, ldapConfig.organizational_units.users, searchFilter);
+      
+      let maxUID = 10000; // 起始UID，避免与系统用户冲突
+      
+      for (const user of users) {
+        if (user.uidNumber && user.uidNumber > maxUID) {
+          maxUID = user.uidNumber;
+        }
+      }
+      
+      return maxUID + 1;
+    } catch (error) {
+      console.error('获取下一个UID失败:', error);
+      // 返回一个安全的默认值
+      return 10000 + Math.floor(Math.random() * 1000);
+    } finally {
+      await this.unbindClient(client);
+    }
+  }
+
+  // 获取PI的GID
+  async getPIGID(piId: number): Promise<number> {
+    // 从数据库查询PI的gid_number
+    const pool = require('../config/database').default;
+    
+    try {
+      const result = await pool.query(`
+        SELECT u.gid_number 
+        FROM pis p 
+        JOIN users u ON p.user_id = u.id 
+        WHERE p.id = $1 AND p.is_active = true
+      `, [piId]);
+      
+      if (result.rows.length > 0 && result.rows[0].gid_number) {
+        return result.rows[0].gid_number;
+      }
+      
+      // 如果没有GID，返回默认值
+      console.warn(`PI ${piId} 没有gid_number，使用默认GID`);
+      return 10069; // 默认组GID
+    } catch (error) {
+      console.error('获取PI GID失败:', error);
+      return 10069; // 默认组GID
+    }
+  }
+
+  // 获取学生home目录基础路径
+  async getStudentHomeBaseDirectory(piId: number): Promise<string> {
+    const pool = require('../config/database').default;
+    
+    try {
+      const result = await pool.query(`
+        SELECT u.username, u.home_directory
+        FROM pis p 
+        JOIN users u ON p.user_id = u.id 
+        WHERE p.id = $1 AND p.is_active = true
+      `, [piId]);
+      
+      if (result.rows.length > 0) {
+        const piUser = result.rows[0];
+        if (piUser.home_directory) {
+          // 从PI的home目录提取基础路径
+          // 例如：从 /work/home/ztron 提取 /work/home
+          const piHomePath = piUser.home_directory;
+          const parentPath = piHomePath.substring(0, piHomePath.lastIndexOf('/'));
+          return parentPath;
+        }
+      }
+      
+      // 默认基础路径
+      return '/work/home';
+    } catch (error) {
+      console.error('获取学生home目录基础路径失败:', error);
+      return '/work/home';
+    }
+  }
+
+  // 创建学生账号
+  async createStudentAccount(studentData: any, piId: number): Promise<string> {
+    const ldapConfig = await this.ensureConfig();
+    const client = await this.createClient();
+    
+    try {
+      await this.bindClient(client);
+      
+      // 1. 获取下一个可用的UID
+      const uidNumber = await this.getNextAvailableUID();
+      
+      // 2. 获取PI的GID
+      const gidNumber = await this.getPIGID(piId);
+      
+      // 3. 构建家目录路径 - 学生目录直接在/work/home下
+      const homeBaseDirectory = await this.getStudentHomeBaseDirectory(piId);
+      const homeDirectory = `${homeBaseDirectory}/${studentData.username}`;
+      
+      // 4. 构建用户DN
+      const userDN = `uid=${studentData.username},${ldapConfig.organizational_units.users}`;
+      
+      // 5. 准备用户条目
+      const userEntry = {
+        objectClass: ['top', 'account', 'posixAccount', 'shadowAccount'],
+        uid: studentData.username,
+        cn: studentData.username,
+        uidNumber: uidNumber.toString(),
+        gidNumber: gidNumber.toString(),
+        homeDirectory: homeDirectory,
+        loginShell: '/bin/bash',
+        userPassword: studentData.password // 密码会被LDAP服务器加密
+      };
+      
+      if (ldapConfig.logging.enabled) {
+        console.log('创建LDAP用户:', {
+          dn: userDN,
+          uid: studentData.username,
+          uidNumber,
+          gidNumber,
+          homeDirectory
+        });
+      }
+      
+      // 6. 在LDAP中创建用户
+      await new Promise<void>((resolve, reject) => {
+        client.add(userDN, userEntry, (err) => {
+          if (err) {
+            reject(new Error(`创建LDAP用户失败: ${err.message}`));
+          } else {
+            resolve();
+          }
+        });
+      });
+      
+      console.log(`学生账号 ${studentData.username} 已成功创建在LDAP中`);
+      return userDN;
+      
+    } catch (error) {
+      console.error('创建学生账号失败:', error);
+      throw error;
+    } finally {
+      await this.unbindClient(client);
+    }
+  }
+
+  // 删除学生账号
+  async deleteStudentAccount(username: string): Promise<boolean> {
+    const ldapConfig = await this.ensureConfig();
+    const client = await this.createClient();
+    
+    try {
+      await this.bindClient(client);
+      
+      // 构建用户DN
+      const userDN = `uid=${username},${ldapConfig.organizational_units.users}`;
+      
+      // 从LDAP中删除用户
+      await new Promise<void>((resolve, reject) => {
+        client.del(userDN, (err) => {
+          if (err) {
+            reject(new Error(`删除LDAP用户失败: ${err.message}`));
+          } else {
+            resolve();
+          }
+        });
+      });
+      
+      console.log(`学生账号 ${username} 已从LDAP删除`);
+      return true;
+      
+    } catch (error) {
+      console.error('删除学生账号失败:', error);
+      return false;
+    } finally {
+      await this.unbindClient(client);
+    }
+  }
+
+  // 删除用户（通用方法）
   async deleteUser(ldapDn: string): Promise<void> {
     const client = await this.createClient();
     

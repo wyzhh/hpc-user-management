@@ -138,14 +138,14 @@ export const createStudentSchema = Joi.object({
     .messages({
       'string.pattern.base': '请提供有效的手机号码',
     }),
-  reason: Joi.string()
-    .min(10)
-    .max(500)
+  password: Joi.string()
+    .min(6)
+    .max(50)
     .required()
     .messages({
-      'string.min': '申请原因至少需要10个字符',
-      'string.max': '申请原因不能超过500个字符',
-      'any.required': '申请原因是必填项',
+      'string.min': '密码至少需要6个字符',
+      'string.max': '密码不能超过50个字符',
+      'any.required': '密码是必填项',
     }),
 });
 

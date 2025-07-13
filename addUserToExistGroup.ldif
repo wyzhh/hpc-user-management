@@ -1,0 +1,17 @@
+dn: uid=ldgroup02,ou=People,dc=hpc,dc=cau
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: ldgroup02
+cn: ldgroup02
+uidNumber: 22214
+gidNumber: 10069
+homeDirectory: /work/home/ldgroup/ldgroup02
+loginShell: /bin/bash
+userPassword: ldgroup@123
+
+dn: cn=ldgroup,ou=Group,dc=hpc,dc=cau
+changetype: modify
+add: memberUid
+memberUid: ldgroup02

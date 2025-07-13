@@ -101,13 +101,20 @@ export class StudentController {
         });
       }
 
-      // 创建申请记录
+      // 创建申请记录 - 将密码存储在student_data中
       const request = await RequestModel.create({
         pi_id: piId,
         request_type: 'create',
         student_user_id: null, // 新学生申请，暂时没有user_id
         status: 'pending',
-        reason: studentData.reason,
+        student_data: JSON.stringify({
+          username: studentData.username,
+          chinese_name: studentData.chinese_name,
+          email: studentData.email,
+          phone: studentData.phone,
+          password: studentData.password // 存储密码
+        }),
+        reason: `为学生 ${studentData.chinese_name}(${studentData.username}) 创建账号申请`,
       });
 
       // 记录审计日志

@@ -248,7 +248,7 @@ export interface CreateStudentRequest {
   chinese_name: string;
   email: string;
   phone?: string;
-  reason: string;
+  password: string;
 }
 
 export interface DeleteStudentRequest {

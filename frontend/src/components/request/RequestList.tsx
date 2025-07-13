@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Tag, Space, Button, message, Popconfirm, Input, Select, Card, Badge, Tooltip } from 'antd';
-import { CheckOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, EyeOutlined, RollbackOutlined } from '@ant-design/icons';
 import { Request } from '../../types';
 import { requestService } from '../../services/request';
 
@@ -91,6 +91,22 @@ const RequestList: React.FC<RequestListProps> = ({
     } catch (error) {
       message.error('拒绝申请失败');
       console.error('Reject request error:', error);
+    }
+  };
+
+  // 撤回申请
+  const handleWithdraw = async (request: Request) => {
+    try {
+      const response = await requestService.withdrawRequest(request.id);
+      if (response.success) {
+        message.success('申请已撤回');
+        loadRequests(pagination.current, pagination.pageSize, statusFilter);
+      } else {
+        message.error('撤回申请失败: ' + response.message);
+      }
+    } catch (error) {
+      message.error('撤回申请失败');
+      console.error('Withdraw request error:', error);
     }
   };
 
@@ -274,6 +290,24 @@ const RequestList: React.FC<RequestListProps> = ({
                 </Button>
               </Popconfirm>
             </>
+          )}
+          {!isAdmin && record.status === 'pending' && (
+            <Popconfirm
+              title="确定要撤回这个申请吗？"
+              description="撤回后您可以重新提交申请"
+              onConfirm={() => handleWithdraw(record)}
+              okText="确定"
+              cancelText="取消"
+            >
+              <Button
+                type="link"
+                size="small"
+                icon={<RollbackOutlined />}
+                style={{ color: '#fa8c16' }}
+              >
+                撤回
+              </Button>
+            </Popconfirm>
           )}
         </Space>
       ),

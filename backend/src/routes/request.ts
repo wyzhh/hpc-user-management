@@ -19,6 +19,7 @@ router.get('/stats', requireAnyRole, RequestController.getRequestStats);
 
 // PI相关路由
 router.get('/my', requirePI, validateQuery(paginationSchema), RequestController.getMyRequests);
+router.post('/:id/withdraw', requirePI, validateParams(idParamSchema), RequestController.withdrawRequest);
 
 // 管理员相关路由
 router.get('/all', requireAdmin, validateQuery(paginationSchema), RequestController.getAllRequests);

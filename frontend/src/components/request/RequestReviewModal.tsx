@@ -11,13 +11,15 @@ interface RequestReviewModalProps {
   onCancel: () => void;
   onSuccess: () => void;
   request: Request | null;
+  isAdmin?: boolean; // 是否为管理员
 }
 
 const RequestReviewModal: React.FC<RequestReviewModalProps> = ({
   visible,
   onCancel,
   onSuccess,
-  request
+  request,
+  isAdmin = false
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -125,7 +127,7 @@ const RequestReviewModal: React.FC<RequestReviewModalProps> = ({
       }
       open={visible}
       onCancel={onCancel}
-      footer={request.status === 'pending' ? [
+      footer={request.status === 'pending' && isAdmin ? [
         <Button key="cancel" onClick={onCancel}>
           取消
         </Button>,
@@ -211,7 +213,7 @@ const RequestReviewModal: React.FC<RequestReviewModalProps> = ({
         </div>
 
         {/* 审核表单 */}
-        {request.status === 'pending' && (
+        {request.status === 'pending' && isAdmin && (
           <Form
             form={form}
             layout="vertical"

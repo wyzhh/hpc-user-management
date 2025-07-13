@@ -90,6 +90,14 @@ class RequestService {
     return await apiCall('POST', `/requests/${id}/reject`, { reason });
   }
 
+  // PI撤回申请
+  async withdrawRequest(id: number): Promise<ApiResponse<{
+    request_id: number;
+    status: string;
+  }>> {
+    return await apiCall('POST', `/requests/${id}/withdraw`);
+  }
+
   // 获取申请统计信息
   async getRequestStats(): Promise<ApiResponse<RequestStats>> {
     return await apiCall<RequestStats>('GET', '/requests/stats');
@@ -101,6 +109,7 @@ class RequestService {
       { label: '待审核', value: 'pending' },
       { label: '已批准', value: 'approved' },
       { label: '已拒绝', value: 'rejected' },
+      { label: '已撤回', value: 'withdrawn' },
     ];
   }
 
@@ -118,6 +127,7 @@ class RequestService {
       pending: '待审核',
       approved: '已批准',
       rejected: '已拒绝',
+      withdrawn: '已撤回',
     };
     return statusMap[status] || status;
   }
@@ -137,6 +147,7 @@ class RequestService {
       pending: 'orange',
       approved: 'green',
       rejected: 'red',
+      withdrawn: 'gray',
     };
     return colorMap[status] || 'default';
   }

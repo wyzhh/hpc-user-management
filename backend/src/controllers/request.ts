@@ -137,7 +137,9 @@ export class RequestController {
 
         if (request.request_type === 'create') {
           // 处理创建学生账号申请
-          const studentData = request.student_data;
+          const studentData = typeof request.student_data === 'string' 
+            ? JSON.parse(request.student_data) 
+            : request.student_data;
           
           // 再次检查用户名是否可用
           const existingStudent = await StudentModel.findByUsername(studentData.username);
@@ -345,10 +347,11 @@ export class RequestController {
       }
 
       // 获取各状态的申请数量
-      const [pending, approved, rejected] = await Promise.all([
+      const [pending, approved, rejected, withdrawn] = await Promise.all([
         RequestModel.getAll(1, 1, 'pending', piId),
         RequestModel.getAll(1, 1, 'approved', piId),
         RequestModel.getAll(1, 1, 'rejected', piId),
+        RequestModel.getAll(1, 1, 'withdrawn', piId),
       ]);
 
       res.json({
@@ -359,12 +362,80 @@ export class RequestController {
           pending: pending.total,
           approved: approved.total,
           rejected: rejected.total,
-          total: pending.total + approved.total + rejected.total,
+          withdrawn: withdrawn.total,
+          total: pending.total + approved.total + rejected.total + withdrawn.total,
         },
       });
 
     } catch (error) {
       console.error('获取申请统计错误:', error);
+      res.status(500).json({
+        success: false,
+        message: '服务器内部错误',
+        code: 500,
+      });
+    }
+  }
+
+  // PI撤回申请
+  static async withdrawRequest(req: Request, res: Response) {
+    try {
+      const requestId = parseInt(req.params.id);
+      const piId = req.userId!;
+
+      // 获取申请详情
+      const request = await RequestModel.findById(requestId);
+      if (!request) {
+        return res.status(404).json({
+          success: false,
+          message: '申请不存在',
+          code: 404,
+        });
+      }
+
+      // 检查权限：只能撤回自己的申请
+      if (request.pi_id !== piId) {
+        return res.status(403).json({
+          success: false,
+          message: '您只能撤回自己的申请',
+          code: 403,
+        });
+      }
+
+      // 检查申请状态：只能撤回待审核的申请
+      if (request.status !== 'pending') {
+        return res.status(400).json({
+          success: false,
+          message: '只能撤回待审核的申请',
+          code: 400,
+        });
+      }
+
+      // 更新申请状态为已撤回
+      await RequestModel.update(requestId, {
+        status: 'withdrawn',
+        reviewed_at: new Date().toISOString(),
+      });
+
+      // 记录审计日志
+      console.log(`申请撤回: 用户${piId}撤回了申请${requestId}`);
+
+      res.json({
+        success: true,
+        message: '申请已撤回',
+        data: {
+          request_id: requestId,
+          status: 'withdrawn',
+        },
+        code: 200,
+      });
+
+    } catch (error) {
+      console.error('撤回申请错误:', error);
+
+      // 记录错误日志
+      console.error('撤回申请失败:', error);
+
       res.status(500).json({
         success: false,
         message: '服务器内部错误',

@@ -9,6 +9,7 @@ import apiRoutes from './routes';
 import { testConnection } from './config/database';
 import { ldapService } from './services/ldap';
 import { SchedulerService } from './services/scheduler';
+import { SafeSchedulerService } from './services/SafeSchedulerService';
 import { InitializationService } from './services/InitializationService';
 
 const app = express();
@@ -30,17 +31,43 @@ if (config.nodeEnv === 'development') {
   app.use(morgan('combined'));
 }
 
-// 速率限制
-const limiter = rateLimit({
+// 一般API的速率限制
+const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分钟
-  max: 100, // 每个IP最多100个请求
+  max: 300, // 增加到300个请求
   message: {
     success: false,
     message: '请求过于频繁，请稍后再试',
     code: 429,
   },
 });
-app.use('/api', limiter);
+
+// 对check-username接口的宽松限制
+const checkUsernameLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1分钟
+  max: 30, // 每分钟最多30个检查请求
+  message: {
+    success: false,
+    message: '用户名检查请求过于频繁，请稍后再试',
+    code: 429,
+  },
+});
+
+// 对初始化接口的宽松限制  
+const initLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1分钟
+  max: 50, // 每分钟最多50个请求
+  message: {
+    success: false,
+    message: '初始化请求过于频繁，请稍后再试',
+    code: 429,
+  },
+});
+
+// 应用不同的限制策略
+app.use('/api/students/check-username', checkUsernameLimiter);
+app.use('/api/initialization', initLimiter);
+app.use('/api', generalLimiter);
 
 // 解析请求体
 app.use(express.json({ limit: '10mb' }));
@@ -105,12 +132,11 @@ const server = app.listen(config.port, async () => {
     
     // 只有在系统已初始化的情况下才启动定时同步任务
     if (config.nodeEnv !== 'test') {
-      SchedulerService.startAllTasks();
+      // 启用新的安全同步任务
+      SafeSchedulerService.startSafeTasks();
       
-      // 启动时立即同步：稍微延迟以确保系统完全启动
-      setTimeout(async () => {
-        await SchedulerService.smartStartupSync();
-      }, 1000); // 延迟1秒执行，确保启动时立即同步
+      console.log('🛡️ 系统已启用安全同步模式');
+      console.log('📢 本地业务数据受到保护，只有LDAP权威字段会被同步');
     }
   }
 });
@@ -119,6 +145,7 @@ const server = app.listen(config.port, async () => {
 process.on('SIGTERM', () => {
   console.log('收到SIGTERM信号，开始优雅关闭...');
   SchedulerService.stopAllTasks();
+  SafeSchedulerService.stopAllTasks();
   server.close(() => {
     console.log('服务器已关闭');
     process.exit(0);
@@ -128,6 +155,7 @@ process.on('SIGTERM', () => {
 process.on('SIGINT', () => {
   console.log('收到SIGINT信号，开始优雅关闭...');
   SchedulerService.stopAllTasks();
+  SafeSchedulerService.stopAllTasks();
   server.close(() => {
     console.log('服务器已关闭');
     process.exit(0);

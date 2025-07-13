@@ -6,18 +6,21 @@ import RequestReviewModal from '../components/request/RequestReviewModal';
 import { Request, RequestStats } from '../types';
 import { requestService } from '../services/request';
 import { useAuth } from '../contexts/AuthContext';
+import { useLocation } from 'react-router-dom';
 
 const { TabPane } = Tabs;
 
 const RequestManagement: React.FC = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [stats, setStats] = useState<RequestStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
-  const isAdmin = false; // 暂时禁用admin功能
+  // 基于用户角色和当前路径确定是否为管理员且在管理系统中
+  const isAdmin = user?.role === 'admin' && location.pathname.startsWith('/admin/');
 
   // 加载统计数据
   const loadStats = async () => {
@@ -181,6 +184,7 @@ const RequestManagement: React.FC = () => {
         request={selectedRequest}
         onSuccess={handleReviewSuccess}
         onCancel={handleCloseReviewModal}
+        isAdmin={isAdmin}
       />
     </div>
   );

@@ -25,6 +25,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [usernameChecking, setUsernameChecking] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkTimeout, setCheckTimeout] = useState<NodeJS.Timeout | null>(null);
 
   // 重置表单
   useEffect(() => {
@@ -42,6 +43,15 @@ const StudentForm: React.FC<StudentFormProps> = ({
       }
     }
   }, [visible, mode, student, form]);
+
+  // 组件卸载时清理定时器
+  useEffect(() => {
+    return () => {
+      if (checkTimeout) {
+        clearTimeout(checkTimeout);
+      }
+    };
+  }, [checkTimeout]);
 
   // 检查用户名可用性
   const checkUsername = async (username: string) => {
@@ -85,7 +95,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
           chinese_name: values.chinese_name,
           email: values.email,
           phone: values.phone,
-          reason: values.reason || '创建学生账号'
+          password: values.password
         };
 
         const response = await studentService.createStudentRequest(createData);
@@ -140,9 +150,10 @@ const StudentForm: React.FC<StudentFormProps> = ({
     phone: [
       { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确' }
     ],
-    reason: mode === 'create' ? [
-      { required: true, message: '请输入申请理由' },
-      { min: 10, message: '申请理由至少需要10个字符' }
+    password: mode === 'create' ? [
+      { required: true, message: '请输入学生密码' },
+      { min: 6, message: '密码至少需要6个字符' },
+      { max: 50, message: '密码不能超过50个字符' }
     ] : []
   };
 
@@ -179,8 +190,13 @@ const StudentForm: React.FC<StudentFormProps> = ({
             onChange={(e) => {
               const value = e.target.value;
               if (mode === 'create') {
-                // 防抖检查用户名
-                setTimeout(() => checkUsername(value), 500);
+                // 清除之前的防抖定时器
+                if (checkTimeout) {
+                  clearTimeout(checkTimeout);
+                }
+                // 设置新的防抖定时器，延长到1秒
+                const newTimeout = setTimeout(() => checkUsername(value), 1000);
+                setCheckTimeout(newTimeout);
               }
             }}
           />
@@ -221,15 +237,12 @@ const StudentForm: React.FC<StudentFormProps> = ({
 
         {mode === 'create' && (
           <Form.Item
-            name="reason"
-            label="申请理由"
-            rules={formRules.reason}
+            name="password"
+            label="学生密码"
+            rules={formRules.password}
           >
-            <TextArea
-              placeholder="请输入创建学生账号的理由"
-              rows={4}
-              maxLength={500}
-              showCount
+            <Input.Password
+              placeholder="请输入学生的LDAP密码"
             />
           </Form.Item>
         )}
