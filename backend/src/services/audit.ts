@@ -17,8 +17,9 @@ export class AuditService {
       return {
         id: 0,
         action,
-        admin_id: performerType === 'admin' ? performerId : null,
-        details: JSON.stringify(details || {}),
+        performer_type: performerType,
+        performer_id: performerId,
+        details: details || {},
         created_at: new Date()
       } as AuditLog;
     } catch (error) {

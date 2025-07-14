@@ -18,11 +18,29 @@ export class RequestController {
         type
       );
 
+      // 解析student_data JSON字符串
+      const processedRequests = result.requests.map(request => {
+        if (request.student_data) {
+          try {
+            request.student_data = typeof request.student_data === 'string' 
+              ? JSON.parse(request.student_data) 
+              : request.student_data;
+          } catch (error) {
+            console.error(`解析申请 ${request.id} 的student_data失败:`, error);
+            request.student_data = null;
+          }
+        }
+        return request;
+      });
+
       res.json({
         success: true,
         message: '获取申请记录成功',
         code: 200,
-        data: result,
+        data: {
+          ...result,
+          requests: processedRequests
+        },
       });
     } catch (error) {
       console.error('获取申请记录错误:', error);
@@ -46,11 +64,29 @@ export class RequestController {
         pi_id ? parseInt(pi_id) : undefined
       );
 
+      // 解析student_data JSON字符串
+      const processedRequests = result.requests.map(request => {
+        if (request.student_data) {
+          try {
+            request.student_data = typeof request.student_data === 'string' 
+              ? JSON.parse(request.student_data) 
+              : request.student_data;
+          } catch (error) {
+            console.error(`解析申请 ${request.id} 的student_data失败:`, error);
+            request.student_data = null;
+          }
+        }
+        return request;
+      });
+
       res.json({
         success: true,
         message: '获取申请记录成功',
         code: 200,
-        data: result,
+        data: {
+          ...result,
+          requests: processedRequests
+        },
       });
     } catch (error) {
       console.error('获取申请记录错误:', error);
@@ -137,9 +173,39 @@ export class RequestController {
 
         if (request.request_type === 'create') {
           // 处理创建学生账号申请
-          const studentData = typeof request.student_data === 'string' 
-            ? JSON.parse(request.student_data) 
-            : request.student_data;
+          console.log('Debug - request.student_data:', request.student_data);
+          
+          if (!request.student_data) {
+            return res.status(400).json({
+              success: false,
+              message: '申请中缺少学生数据，无法处理',
+              code: 400,
+            });
+          }
+          
+          let studentData;
+          try {
+            studentData = typeof request.student_data === 'string' 
+              ? JSON.parse(request.student_data) 
+              : request.student_data;
+          } catch (parseError) {
+            console.error('解析学生数据失败:', parseError);
+            return res.status(400).json({
+              success: false,
+              message: '学生数据格式错误，无法解析',
+              code: 400,
+            });
+          }
+          
+          console.log('Debug - parsed studentData:', studentData);
+          
+          if (!studentData || !studentData.username) {
+            return res.status(400).json({
+              success: false,
+              message: '学生数据不完整，缺少用户名',
+              code: 400,
+            });
+          }
           
           // 再次检查用户名是否可用
           const existingStudent = await StudentModel.findByUsername(studentData.username);

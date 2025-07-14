@@ -348,8 +348,8 @@ export class UserController {
       const activeStudents = allStudents.students.filter(s => s.status === 'active');
 
       // 获取所有用户统计
-      const allUsers = await UserModel.getAll(1, 10000, null);
-      const activeUsers = await UserModel.getAll(1, 10000, true);
+      const allUsers = await UserModel.getAll(1, 10000, undefined, undefined);
+      const activeUsers = await UserModel.getAll(1, 10000, undefined, true);
 
       // 获取最近的用户
       const recentPIs = allPIs.pis.slice(0, 5);
@@ -402,7 +402,9 @@ export class UserController {
         email,
         role: role as 'admin' | 'super_admin',
         password_hash: passwordHash,
-        is_active: true
+        is_active: true,
+        auth_type: 'local' as const,
+        updated_at: new Date()
       });
 
       // 记录审计日志

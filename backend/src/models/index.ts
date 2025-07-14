@@ -322,14 +322,36 @@ export class StudentModel {
   }
 
   static async create(data: Omit<Student, 'id' | 'created_at' | 'updated_at'>): Promise<Student> {
-    const query = `
-      INSERT INTO students (username, chinese_name, email, phone, pi_id, ldap_dn, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    // 首先在users表中创建或更新用户记录
+    const userQuery = `
+      INSERT INTO users (username, full_name, email, phone, user_type, is_active)
+      VALUES ($1, $2, $3, $4, 'student', true)
+      ON CONFLICT (username) 
+      DO UPDATE SET full_name = $2, email = $3, phone = $4, user_type = 'student', updated_at = CURRENT_TIMESTAMP
+      RETURNING id
+    `;
+    const userValues = [data.username, data.chinese_name, data.email, data.phone];
+    const userResult = await pool.query(userQuery, userValues);
+    const userId = userResult.rows[0].id;
+
+    // 然后在students表中创建学生记录
+    const studentQuery = `
+      INSERT INTO students (user_id, pi_id, status)
+      VALUES ($1, $2, $3)
       RETURNING *
     `;
-    const values = [data.username, data.chinese_name, data.email, data.phone, data.pi_id, data.ldap_dn, data.status];
-    const result = await pool.query(query, values);
-    return result.rows[0];
+    const studentValues = [userId, data.pi_id, data.status || 'active'];
+    const studentResult = await pool.query(studentQuery, studentValues);
+    
+    // 返回完整的学生信息（包含用户信息）
+    const completeStudentQuery = `
+      SELECT s.*, u.username, u.full_name as chinese_name, u.email, u.phone
+      FROM students s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.id = $1
+    `;
+    const completeResult = await pool.query(completeStudentQuery, [studentResult.rows[0].id]);
+    return completeResult.rows[0];
   }
 
   static async update(id: number, data: Partial<Student>): Promise<Student | null> {
@@ -542,11 +564,11 @@ export class StudentModel {
 export class RequestModel {
   static async create(data: Omit<Request, 'id' | 'requested_at' | 'reviewed_at'>): Promise<Request> {
     const query = `
-      INSERT INTO requests (pi_id, request_type, student_user_id, status, reason)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO requests (pi_id, request_type, student_user_id, status, reason, student_data)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
-    const values = [data.pi_id, data.request_type, data.student_user_id, data.status, data.reason];
+    const values = [data.pi_id, data.request_type, data.student_user_id, data.status, data.reason, data.student_data];
     const result = await pool.query(query, values);
     return result.rows[0];
   }

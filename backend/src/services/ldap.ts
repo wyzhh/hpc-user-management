@@ -212,7 +212,8 @@ export class LDAPService {
 
   // 根据GID获取用户（课题组成员）
   async getUsersByGid(gid: number): Promise<LDAPUser[]> {
-    const client = this.createClient();
+    const ldapConfig = await this.ensureConfig();
+    const client = await this.createClient();
     
     try {
       await this.bindClient(client);
@@ -229,7 +230,7 @@ export class LDAPService {
       };
 
       return new Promise((resolve, reject) => {
-        client.search(config.ldap.baseDN, opts, (err, res) => {
+        client.search(ldapConfig.server.base_dn, opts, (err, res) => {
           if (err) {
             reject(err);
             return;
@@ -437,10 +438,11 @@ export class LDAPService {
 
   // 兼容方法：学生认证
   async authenticateStudent(username: string, password: string): Promise<Student | null> {
-    const studentDN = `uid=${username},${config.ldap.studentOU},${config.ldap.baseDN}`;
+    const ldapConfig = await this.ensureConfig();
+    const studentDN = `uid=${username},${ldapConfig.organizational_units.legacy.student_ou},${ldapConfig.server.base_dn}`;
     
     try {
-      const client = this.createClient();
+      const client = await this.createClient();
       
       await new Promise<void>((resolve, reject) => {
         client.bind(studentDN, password, (err) => {
@@ -528,9 +530,10 @@ export class LDAPService {
   // 兼容方法：获取所有PI用户
   async getAllPIUsers(): Promise<PIInfo[]> {
     try {
+      const ldapConfig = await this.ensureConfig();
       const allUsers = await this.getAllUsersWithPosix();
       const piUsers = allUsers.filter(user => 
-        user.dn.includes(config.ldap.piOU)
+        user.dn.includes(ldapConfig.organizational_units.legacy.pi_ou)
       );
 
       return piUsers.map(user => ({
@@ -558,9 +561,10 @@ export class LDAPService {
   // 兼容方法：获取所有学生用户
   async getAllStudentUsers(): Promise<Student[]> {
     try {
+      const ldapConfig = await this.ensureConfig();
       const allUsers = await this.getAllUsersWithPosix();
       const studentUsers = allUsers.filter(user => 
-        user.dn.includes(config.ldap.studentOU)
+        user.dn.includes(ldapConfig.organizational_units.legacy.student_ou)
       );
 
       return studentUsers.map(user => ({
@@ -590,20 +594,21 @@ export class LDAPService {
 
   // 搜索LDAP用户（用于初始化管理员选择）
   async searchUsersByTerm(searchTerm: string): Promise<any[]> {
-    const client = this.createClient();
+    const ldapConfig = await this.ensureConfig();
+    const client = await this.createClient();
     
     try {
       await this.bindClient(client);
       
       const searchFilter = `(|(uid=*${searchTerm}*)(cn=*${searchTerm}*)(displayName=*${searchTerm}*)(mail=*${searchTerm}*))`;
       
-      return await this.searchUsers(client, `ou=users,${config.ldap.baseDN}`, searchFilter);
+      return await this.searchUsers(client, `ou=users,${ldapConfig.server.base_dn}`, searchFilter);
     } catch (error) {
       console.error('搜索用户失败:', error);
       // 如果ou=users不存在，尝试在整个基础DN中搜索
       try {
         const searchFilter = `(|(uid=*${searchTerm}*)(cn=*${searchTerm}*)(displayName=*${searchTerm}*)(mail=*${searchTerm}*))`;
-        return await this.searchUsers(client, config.ldap.baseDN, searchFilter);
+        return await this.searchUsers(client, ldapConfig.server.base_dn, searchFilter);
       } catch (fallbackError) {
         console.error('回退搜索也失败:', fallbackError);
         return [];
