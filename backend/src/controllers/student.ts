@@ -114,7 +114,6 @@ export class StudentController {
           phone: studentData.phone,
           password: studentData.password // 存储密码
         }),
-        reason: `为学生 ${studentData.chinese_name}(${studentData.username}) 创建账号申请`,
       });
 
       // 记录审计日志
@@ -156,7 +155,7 @@ export class StudentController {
   static async deleteStudentRequest(req: Request, res: Response) {
     try {
       const piId = req.userId!;
-      const { student_id, reason }: DeleteStudentRequest = req.body;
+      const { student_id }: DeleteStudentRequest = req.body;
 
       // 检查学生是否存在且属于当前PI
       const student = await StudentModel.findById(student_id);
@@ -186,7 +185,7 @@ export class StudentController {
 
       // 检查是否已有待处理的删除申请
       const existingRequests = await RequestModel.findByPiId(piId, 1, 10, 'pending', 'delete');
-      const hasExistingRequest = existingRequests.requests.some(req => req.student_id === student_id);
+      const hasExistingRequest = existingRequests.requests.some(req => req.student_user_id === student.user_id);
       
       if (hasExistingRequest) {
         return res.status(409).json({
@@ -200,9 +199,8 @@ export class StudentController {
       const request = await RequestModel.create({
         pi_id: piId,
         request_type: 'delete',
-        student_user_id: student_id,
+        student_user_id: student.user_id,
         status: 'pending',
-        reason: reason,
       });
 
       // 记录审计日志

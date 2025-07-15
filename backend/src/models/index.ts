@@ -258,9 +258,12 @@ export class StudentModel {
     const offset = (page - 1) * limit;
     let whereClause = 'WHERE s.pi_id = $1';
     const params: any[] = [piId];
+    
+    // 排除有待处理删除申请的学生
+    whereClause += ' AND NOT EXISTS (SELECT 1 FROM requests r WHERE r.student_user_id = s.user_id AND r.request_type = \'delete\' AND r.status = \'pending\')';
 
     if (status) {
-      whereClause += ' AND s.status = $2';
+      whereClause += ` AND s.status = $${params.length + 1}`;
       params.push(status);
     }
 
@@ -568,39 +571,60 @@ export class RequestModel {
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
-    const values = [data.pi_id, data.request_type, data.student_user_id, data.status, data.reason, data.student_data];
+    const values = [data.pi_id, data.request_type, data.student_user_id, data.status, data.reason || null, data.student_data];
     const result = await pool.query(query, values);
     return result.rows[0];
   }
 
   static async findById(id: number): Promise<Request | null> {
-    const query = 'SELECT * FROM requests WHERE id = $1';
+    const query = `
+      SELECT r.*, 
+             u.username as pi_username, u.full_name as pi_name,
+             su.username as student_username, su.full_name as student_name, su.email as student_email
+      FROM requests r
+      JOIN pis p ON r.pi_id = p.id
+      JOIN users u ON p.user_id = u.id
+      LEFT JOIN users su ON r.student_user_id = su.id
+      WHERE r.id = $1
+    `;
     const result = await pool.query(query, [id]);
     return result.rows[0] || null;
   }
 
   static async findByPiId(piId: number, page = 1, limit = 10, status?: string, type?: string): Promise<{ requests: Request[], total: number }> {
     const offset = (page - 1) * limit;
-    let whereClause = 'WHERE pi_id = $1';
+    let whereClause = 'WHERE r.pi_id = $1';
     const params: any[] = [piId];
 
     if (status) {
-      whereClause += ` AND status = $${params.length + 1}`;
+      whereClause += ` AND r.status = $${params.length + 1}`;
       params.push(status);
     }
 
     if (type) {
-      whereClause += ` AND request_type = $${params.length + 1}`;
+      whereClause += ` AND r.request_type = $${params.length + 1}`;
       params.push(type);
     }
 
-    const countQuery = `SELECT COUNT(*) FROM requests ${whereClause}`;
+    const countQuery = `
+      SELECT COUNT(*) FROM requests r
+      JOIN pis p ON r.pi_id = p.id
+      JOIN users u ON p.user_id = u.id
+      ${whereClause}
+    `;
     const countResult = await pool.query(countQuery, params);
     const total = parseInt(countResult.rows[0].count, 10);
 
     const query = `
-      SELECT * FROM requests ${whereClause}
-      ORDER BY requested_at DESC
+      SELECT r.*, 
+             u.username as pi_username, u.full_name as pi_name,
+             su.username as student_username, su.full_name as student_name, su.email as student_email
+      FROM requests r
+      JOIN pis p ON r.pi_id = p.id
+      JOIN users u ON p.user_id = u.id
+      LEFT JOIN users su ON r.student_user_id = su.id
+      ${whereClause}
+      ORDER BY r.requested_at DESC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
     params.push(limit, offset);
@@ -632,10 +656,13 @@ export class RequestModel {
     const total = parseInt(countResult.rows[0].count, 10);
 
     const query = `
-      SELECT r.*, u.username as pi_username, u.full_name as pi_name
+      SELECT r.*, 
+             u.username as pi_username, u.full_name as pi_name,
+             su.username as student_username, su.full_name as student_name, su.email as student_email
       FROM requests r
       JOIN pis p ON r.pi_id = p.id
       JOIN users u ON p.user_id = u.id
+      LEFT JOIN users su ON r.student_user_id = su.id
       ${whereClause}
       ORDER BY requested_at DESC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}

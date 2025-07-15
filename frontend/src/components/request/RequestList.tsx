@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tag, Space, Button, message, Popconfirm, Input, Select, Card, Badge, Tooltip } from 'antd';
+import { Table, Tag, Space, Button, message, Popconfirm, Input, Select, Card, Tooltip } from 'antd';
 import { CheckOutlined, CloseOutlined, EyeOutlined, RollbackOutlined } from '@ant-design/icons';
 import { Request } from '../../types';
 import { requestService } from '../../services/request';
@@ -80,7 +80,7 @@ const RequestList: React.FC<RequestListProps> = ({
 
   const handleReject = async (request: Request) => {
     try {
-      const response = await requestService.rejectRequest(request.id, '管理员审核拒绝');
+      const response = await requestService.rejectRequest(request.id);
       if (response.success) {
         message.success('申请已拒绝');
         loadRequests(pagination.current, pagination.pageSize, statusFilter);
@@ -132,8 +132,7 @@ const RequestList: React.FC<RequestListProps> = ({
     if (!searchText) return true;
     return (
       request.pi_username?.toLowerCase().includes(searchText.toLowerCase()) ||
-      request.pi_name?.toLowerCase().includes(searchText.toLowerCase()) ||
-      request.reason?.toLowerCase().includes(searchText.toLowerCase())
+      request.pi_name?.toLowerCase().includes(searchText.toLowerCase())
     );
   });
 
@@ -148,6 +147,20 @@ const RequestList: React.FC<RequestListProps> = ({
       } catch {
         return '解析失败';
       }
+    } else if (request.request_type === 'delete') {
+      // 调试信息
+      console.log('删除申请数据:', {
+        student_username: request.student_username,
+        student_name: request.student_name,
+        student_email: request.student_email,
+        request_id: request.id
+      });
+      
+      // 对于删除申请，显示从后端查询到的学生信息
+      if (request.student_username) {
+        return `${request.student_username}${request.student_name ? ` (${request.student_name})` : ''}`;
+      }
+      return '学生信息不可用';
     }
     return '-';
   };
@@ -208,17 +221,6 @@ const RequestList: React.FC<RequestListProps> = ({
       render: (date: string) => (
         <Tooltip title={new Date(date).toLocaleString()}>
           <span>{new Date(date).toLocaleDateString()}</span>
-        </Tooltip>
-      ),
-    },
-    {
-      title: '申请理由',
-      dataIndex: 'reason',
-      key: 'reason',
-      ellipsis: true,
-      render: (reason: string) => (
-        <Tooltip title={reason}>
-          <span>{reason}</span>
         </Tooltip>
       ),
     },

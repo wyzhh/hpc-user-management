@@ -164,11 +164,10 @@ export const deleteStudentSchema = Joi.object({
   reason: Joi.string()
     .min(10)
     .max(500)
-    .required()
+    .optional()
     .messages({
       'string.min': '删除原因至少需要10个字符',
       'string.max': '删除原因不能超过500个字符',
-      'any.required': '删除原因是必填项',
     }),
 });
 
@@ -186,11 +185,10 @@ export const rejectRequestSchema = Joi.object({
   reason: Joi.string()
     .min(5)
     .max(500)
-    .required()
+    .optional()
     .messages({
       'string.min': '拒绝原因至少需要5个字符',
       'string.max': '拒绝原因不能超过500个字符',
-      'any.required': '拒绝原因是必填项',
     }),
 });
 

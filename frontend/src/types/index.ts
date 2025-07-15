@@ -132,6 +132,7 @@ export interface Request {
   pi_id: number;
   request_type: 'create' | 'delete';
   student_id?: number;
+  student_user_id?: number;
   student_data?: any;
   status: 'pending' | 'approved' | 'rejected';
   reason?: string;
@@ -140,6 +141,10 @@ export interface Request {
   reviewed_at?: string;
   pi_username?: string;
   pi_name?: string;
+  // 删除申请的学生信息字段
+  student_username?: string;
+  student_name?: string;
+  student_email?: string;
 }
 
 // API响应类型
@@ -253,7 +258,6 @@ export interface CreateStudentRequest {
 
 export interface DeleteStudentRequest {
   student_id: number;
-  reason: string;
 }
 
 // 申请统计类型

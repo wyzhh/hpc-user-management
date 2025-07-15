@@ -241,14 +241,25 @@ export class RequestController {
 
         } else if (request.request_type === 'delete') {
           // 处理删除学生账号申请
-          student = await StudentModel.findById(request.student_id!);
-          if (!student) {
+          // student_user_id 是 users.id，需要通过 user_id 找到对应的 students 记录
+          const pool = require('../config/database').default;
+          const studentQuery = `
+            SELECT s.*, u.username 
+            FROM students s 
+            JOIN users u ON s.user_id = u.id 
+            WHERE s.user_id = $1
+          `;
+          const studentResult = await pool.query(studentQuery, [request.student_user_id]);
+          
+          if (studentResult.rows.length === 0) {
             return res.status(404).json({
               success: false,
               message: '要删除的学生不存在',
               code: 404,
             });
           }
+          
+          student = studentResult.rows[0];
 
           // 从LDAP中删除账号
           const ldapDeleted = await ldapService.deleteStudentAccount(student.username);
@@ -256,8 +267,8 @@ export class RequestController {
             throw new Error('LDAP账号删除失败');
           }
 
-          // 更新数据库中的学生状态
-          await StudentModel.update(student.id, { status: 'deleted' });
+          // 更新数据库中的学生状态为suspended（表示已删除）
+          await StudentModel.update(student.id, { status: 'suspended' });
 
           // 记录LDAP账号删除日志
           await AuditService.logLdapAccountDeleted(
@@ -363,11 +374,11 @@ export class RequestController {
       await RequestModel.update(requestId, {
         status: 'rejected',
         admin_id: adminId,
-        reason: reason,
+        reason: reason || null,
       });
 
       // 记录拒绝日志
-      await AuditService.logRequestRejected(requestId, adminId, reason, {
+      await AuditService.logRequestRejected(requestId, adminId, reason || '管理员拒绝', {
         request_type: request.request_type,
       });
 
@@ -378,7 +389,7 @@ export class RequestController {
         data: {
           request_id: requestId,
           status: 'rejected',
-          reason: reason,
+          reason: reason || null,
         },
       });
 

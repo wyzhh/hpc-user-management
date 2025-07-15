@@ -82,12 +82,12 @@ class RequestService {
   }
 
   // 管理员拒绝申请
-  async rejectRequest(id: number, reason: string): Promise<ApiResponse<{
+  async rejectRequest(id: number, reason?: string): Promise<ApiResponse<{
     request_id: number;
     status: string;
-    reason: string;
+    reason?: string;
   }>> {
-    return await apiCall('POST', `/requests/${id}/reject`, { reason });
+    return await apiCall('POST', `/requests/${id}/reject`, reason ? { reason } : {});
   }
 
   // PI撤回申请

@@ -24,7 +24,6 @@ const RequestReviewModal: React.FC<RequestReviewModalProps> = ({
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null);
-  const [requestDetails, setRequestDetails] = useState<any>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
   // 加载申请详情
@@ -33,7 +32,8 @@ const RequestReviewModal: React.FC<RequestReviewModalProps> = ({
     try {
       const response = await requestService.getRequestById(requestId);
       if (response.success && response.data) {
-        setRequestDetails(response.data);
+        // 详情数据加载完成，这里可以处理详情数据
+        console.log('Request details loaded:', response.data);
       }
     } catch (error) {
       console.error('Load request details error:', error);
@@ -61,7 +61,7 @@ const RequestReviewModal: React.FC<RequestReviewModalProps> = ({
       if (action === 'approve') {
         response = await requestService.approveRequest(request!.id, values.reason);
       } else {
-        response = await requestService.rejectRequest(request!.id, values.reason || '管理员拒绝');
+        response = await requestService.rejectRequest(request!.id, values.reason);
       }
       
       if (response.success) {
@@ -174,24 +174,35 @@ const RequestReviewModal: React.FC<RequestReviewModalProps> = ({
         </div>
 
         {/* 组用户信息 */}
-        {request.request_type === 'create' && (
-          <div style={{ marginBottom: 20 }}>
-            <h4>组用户信息</h4>
-            {formatStudentData(request.student_data)}
-          </div>
-        )}
-
-        {/* 申请理由 */}
         <div style={{ marginBottom: 20 }}>
-          <h4>申请理由</h4>
-          <div style={{ 
-            padding: '12px', 
-            backgroundColor: '#f5f5f5', 
-            borderRadius: '6px',
-            border: '1px solid #d9d9d9'
-          }}>
-            {request.reason || '无'}
-          </div>
+          <h4>组用户信息</h4>
+          {request.request_type === 'create' ? (
+            formatStudentData(request.student_data)
+          ) : request.request_type === 'delete' ? (
+            (() => {
+              // 调试信息
+              console.log('RequestReviewModal 删除申请数据:', {
+                student_username: request.student_username,
+                student_name: request.student_name,
+                student_email: request.student_email,
+                request_id: request.id,
+                full_request: request
+              });
+              
+              return request.student_username ? (
+                <Descriptions column={2} size="small">
+                  <Descriptions.Item label="用户名">{request.student_username}</Descriptions.Item>
+                  <Descriptions.Item label="中文姓名">{request.student_name || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="邮箱">{request.student_email || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="操作">删除此用户</Descriptions.Item>
+                </Descriptions>
+              ) : (
+                <span style={{ color: '#999' }}>学生信息不可用</span>
+              );
+            })()
+          ) : (
+            <span style={{ color: '#999' }}>无学生信息</span>
+          )}
         </div>
 
         {/* 审核表单 */}

@@ -217,7 +217,6 @@ export interface CreateStudentRequest {
 // 删除学生请求 (兼容)
 export interface DeleteStudentRequest {
   student_id: number;
-  reason: string;
 }
 
 // LDAP配置

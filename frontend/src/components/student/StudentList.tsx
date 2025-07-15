@@ -58,8 +58,7 @@ const StudentList: React.FC<StudentListProps> = ({
   const handleDeleteStudent = async (student: Student) => {
     try {
       const response = await studentService.deleteStudentRequest({
-        student_id: student.id,
-        reason: '删除组用户账号'
+        student_id: student.id
       });
       
       if (response.success) {
