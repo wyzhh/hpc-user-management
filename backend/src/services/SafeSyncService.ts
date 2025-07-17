@@ -1,4 +1,4 @@
-import { SimpleLdapService } from './SimpleLdapService';
+// import { SimpleLdapService } from './SimpleLdapService'; // 已删除
 import { ldapService } from './ldap';
 import { UserModel } from '../models/User';
 import { AuditService } from './audit';
@@ -64,14 +64,14 @@ export class SafeSyncService {
       let ldapUsers;
       if (useMockData) {
         console.log('🧪 使用模拟数据进行安全测试...');
-        ldapUsers = await SimpleLdapService.getAllUsersWithPosix();
+        ldapUsers = await ldapService.getAllUsersWithPosix();
       } else {
         console.log('🔗 连接真实LDAP服务器...');
         try {
           ldapUsers = await ldapService.getAllUsersWithPosix();
         } catch (ldapError) {
           console.error('❌ LDAP连接失败，使用模拟模式:', ldapError.message);
-          ldapUsers = await SimpleLdapService.getAllUsersWithPosix();
+          ldapUsers = await ldapService.getAllUsersWithPosix();
         }
       }
       result.users.total = ldapUsers.length;
@@ -234,6 +234,9 @@ export class SafeSyncService {
     for (const user of usersToDelete.rows) {
       try {
         await pool.query('BEGIN');
+        
+        // 删除相关申请记录（如果存在）
+        await pool.query('DELETE FROM requests WHERE student_user_id = $1', [user.id]);
         
         // 删除学生记录（如果存在）
         await pool.query('DELETE FROM students WHERE user_id = $1', [user.id]);

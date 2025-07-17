@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ConfigProvider, Spin } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import { AuthProvider } from './contexts/AuthContext';
-import ProtectedRoute from './components/common/ProtectedRoute';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -114,7 +114,7 @@ const App: React.FC = () => {
                 <Route
                   path="students/*"
                   element={
-                    <ProtectedRoute requiredRoles={['pi']}>
+                    <ProtectedRoute roles={['pi']}>
                       <StudentManagement />
                     </ProtectedRoute>
                   }
@@ -122,7 +122,7 @@ const App: React.FC = () => {
                 <Route
                   path="requests/*"
                   element={
-                    <ProtectedRoute requiredRoles={['pi']}>
+                    <ProtectedRoute roles={['pi']}>
                       <RequestManagement />
                     </ProtectedRoute>
                   }
@@ -132,7 +132,7 @@ const App: React.FC = () => {
                 <Route
                   path="admin/pi-management"
                   element={
-                    <ProtectedRoute requiredRoles={['admin']}>
+                    <ProtectedRoute roles={['admin']}>
                       <PIManagement />
                     </ProtectedRoute>
                   }
@@ -140,7 +140,7 @@ const App: React.FC = () => {
                 <Route
                   path="admin/student-management"
                   element={
-                    <ProtectedRoute requiredRoles={['admin']}>
+                    <ProtectedRoute roles={['admin']}>
                       <AdminStudentManagement />
                     </ProtectedRoute>
                   }
@@ -148,7 +148,7 @@ const App: React.FC = () => {
                 <Route
                   path="admin/requests/*"
                   element={
-                    <ProtectedRoute requiredRoles={['admin']}>
+                    <ProtectedRoute roles={['admin']}>
                       <RequestManagement />
                     </ProtectedRoute>
                   }
@@ -156,7 +156,7 @@ const App: React.FC = () => {
                 <Route
                   path="admin/users/*"
                   element={
-                    <ProtectedRoute requiredRoles={['admin']}>
+                    <ProtectedRoute roles={['admin']}>
                       <UserManagement />
                     </ProtectedRoute>
                   }
@@ -164,7 +164,7 @@ const App: React.FC = () => {
                 <Route
                   path="admin/settings/*"
                   element={
-                    <ProtectedRoute requiredRoles={['admin']}>
+                    <ProtectedRoute roles={['admin']}>
                       <div>系统设置页面（待实现）</div>
                     </ProtectedRoute>
                   }

@@ -228,10 +228,28 @@ export class UserModel {
     };
   }
 
-  // 删除用户
+  // 删除用户（级联删除相关数据）
   static async delete(id: number): Promise<boolean> {
-    const query = 'DELETE FROM users WHERE id = $1';
-    const result = await pool.query(query, [id]);
-    return result.rowCount > 0;
+    try {
+      await pool.query('BEGIN');
+      
+      // 删除相关申请记录
+      await pool.query('DELETE FROM requests WHERE student_user_id = $1', [id]);
+      
+      // 删除学生记录
+      await pool.query('DELETE FROM students WHERE user_id = $1', [id]);
+      
+      // 删除PI记录
+      await pool.query('DELETE FROM pis WHERE user_id = $1', [id]);
+      
+      // 删除用户记录
+      const result = await pool.query('DELETE FROM users WHERE id = $1', [id]);
+      
+      await pool.query('COMMIT');
+      return result.rowCount > 0;
+    } catch (error) {
+      await pool.query('ROLLBACK');
+      throw error;
+    }
   }
 }

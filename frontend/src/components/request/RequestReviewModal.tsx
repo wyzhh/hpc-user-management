@@ -179,27 +179,16 @@ const RequestReviewModal: React.FC<RequestReviewModalProps> = ({
           {request.request_type === 'create' ? (
             formatStudentData(request.student_data)
           ) : request.request_type === 'delete' ? (
-            (() => {
-              // 调试信息
-              console.log('RequestReviewModal 删除申请数据:', {
-                student_username: request.student_username,
-                student_name: request.student_name,
-                student_email: request.student_email,
-                request_id: request.id,
-                full_request: request
-              });
-              
-              return request.student_username ? (
-                <Descriptions column={2} size="small">
-                  <Descriptions.Item label="用户名">{request.student_username}</Descriptions.Item>
-                  <Descriptions.Item label="中文姓名">{request.student_name || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="邮箱">{request.student_email || '-'}</Descriptions.Item>
-                  <Descriptions.Item label="操作">删除此用户</Descriptions.Item>
-                </Descriptions>
-              ) : (
-                <span style={{ color: '#999' }}>学生信息不可用</span>
-              );
-            })()
+            request.student_username ? (
+              <Descriptions column={2} size="small">
+                <Descriptions.Item label="用户名">{request.student_username}</Descriptions.Item>
+                <Descriptions.Item label="中文姓名">{request.student_name || '-'}</Descriptions.Item>
+                <Descriptions.Item label="邮箱">{request.student_email || '-'}</Descriptions.Item>
+                <Descriptions.Item label="操作">删除此用户</Descriptions.Item>
+              </Descriptions>
+            ) : (
+              <span style={{ color: '#999' }}>学生信息不可用</span>
+            )
           ) : (
             <span style={{ color: '#999' }}>无学生信息</span>
           )}

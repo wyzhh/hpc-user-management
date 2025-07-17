@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Tag, Space, Button, message, Popconfirm, Input, Select, Card, Tooltip } from 'antd';
 import { CheckOutlined, CloseOutlined, EyeOutlined, RollbackOutlined } from '@ant-design/icons';
 import { Request } from '../../types';
@@ -31,7 +31,7 @@ const RequestList: React.FC<RequestListProps> = ({
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   // 加载申请列表
-  const loadRequests = async (page = 1, pageSize = 10, status?: string, type?: string) => {
+  const loadRequests = useCallback(async (page = 1, pageSize = 10, status?: string, type?: string) => {
     setLoading(true);
     try {
       const response = isAdmin 
@@ -54,12 +54,12 @@ const RequestList: React.FC<RequestListProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAdmin]);
 
   // 初始加载
   useEffect(() => {
     loadRequests();
-  }, [isAdmin]);
+  }, [loadRequests]);
 
   // 审核申请
   const handleApprove = async (request: Request) => {
@@ -148,14 +148,6 @@ const RequestList: React.FC<RequestListProps> = ({
         return '解析失败';
       }
     } else if (request.request_type === 'delete') {
-      // 调试信息
-      console.log('删除申请数据:', {
-        student_username: request.student_username,
-        student_name: request.student_name,
-        student_email: request.student_email,
-        request_id: request.id
-      });
-      
       // 对于删除申请，显示从后端查询到的学生信息
       if (request.student_username) {
         return `${request.student_username}${request.student_name ? ` (${request.student_name})` : ''}`;

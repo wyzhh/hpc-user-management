@@ -8,7 +8,7 @@ import config from './config';
 import apiRoutes from './routes';
 import { testConnection } from './config/database';
 import { ldapService } from './services/ldap';
-import { SchedulerService } from './services/scheduler';
+// import { SchedulerService } from './services/scheduler'; // 已删除
 import { SafeSchedulerService } from './services/SafeSchedulerService';
 import { InitializationService } from './services/InitializationService';
 
@@ -144,7 +144,7 @@ const server = app.listen(config.port, async () => {
 // 优雅关闭
 process.on('SIGTERM', () => {
   console.log('收到SIGTERM信号，开始优雅关闭...');
-  SchedulerService.stopAllTasks();
+  // SchedulerService.stopAllTasks(); // 已删除
   SafeSchedulerService.stopAllTasks();
   server.close(() => {
     console.log('服务器已关闭');
@@ -154,7 +154,7 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   console.log('收到SIGINT信号，开始优雅关闭...');
-  SchedulerService.stopAllTasks();
+  // SchedulerService.stopAllTasks(); // 已删除
   SafeSchedulerService.stopAllTasks();
   server.close(() => {
     console.log('服务器已关闭');
